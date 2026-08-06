@@ -28,7 +28,7 @@ services:
       PORT: 4444
       APP_URL: ${APP_URL:-http://localhost:4444}
       DATABASE_URL: postgresql://${POSTGRES_USER:-pesquisa_user}:${POSTGRES_PASSWORD:-senha_segura_troque}@postgres:5432/${POSTGRES_DB:-pesquisa_eleitoral}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:senha_segura_redis@redis:6379
       JWT_SECRET: ${JWT_SECRET:-troque_por_uma_string_muito_secreta}
       # WhatsApp Meta Cloud API
       META_WA_TOKEN: ${META_WA_TOKEN:-}
@@ -65,7 +65,7 @@ services:
     environment:
       NODE_ENV: production
       DATABASE_URL: postgresql://${POSTGRES_USER:-pesquisa_user}:${POSTGRES_PASSWORD:-senha_segura_troque}@postgres:5432/${POSTGRES_DB:-pesquisa_eleitoral}
-      REDIS_URL: redis://redis:6379
+      REDIS_URL: redis://:senha_segura_redis@redis:6379
       APP_URL: ${APP_URL:-http://localhost:4444}
       META_WA_TOKEN: ${META_WA_TOKEN:-}
       META_PHONE_ID: ${META_PHONE_ID:-}
@@ -114,7 +114,7 @@ services:
     image: redis:7-alpine
     container_name: pesquisa_redis
     restart: unless-stopped
-    command: redis-server --save 60 1 --loglevel warning --maxmemory 256mb --maxmemory-policy allkeys-lru
+    command: redis-server --requirepass senha_segura_redis --save 60 1 --loglevel warning --maxmemory 256mb --maxmemory-policy allkeys-lru
     volumes:
       - redis_data:/data
     ports:
