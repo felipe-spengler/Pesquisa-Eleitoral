@@ -40,70 +40,20 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Nenhum contato encontrado.' });
     }
 
-    const { sendSurveyEmail } = require('../utils/mailer');
-    const { sendWhatsAppTemplate } = require('../utils/whatsapp');
-
-    // Executa o envio em background no próprio Node.js sem travar a requisição HTTP (Retorna 202)
-    setImmediate(async () => {
-      console.log(`[Disparo] Iniciando envio direto para ${contactsRes.rows.length} contatos via ${channel}`);
+    // Apenas grava os tokens no DB com status 'pending' (A fila em background vai pegar)
+    for (const contact of contactsRes.rows) {
+      const token = uuidv4().replace(/-/g, '');
       
-      for (const contact of contactsRes.rows) {
-        const token = uuidv4().replace(/-/g, '');
-        
-        // 1. Grava no DB como pending
-        const tokenRes = await query(
-          `INSERT INTO dispatch_tokens (survey_id, contact_id, token, channel, status)
-           VALUES ($1, $2, $3, $4, 'pending') RETURNING id`,
-          [survey_id, contact.id, token, channel]
-        );
-        const tokenId = tokenRes.rows[0].id;
-        const surveyUrl = `${process.env.APP_URL || 'http://localhost:4444'}/survey/${token}`;
-
-        try {
-          // 2. Tenta disparar o e-mail ou WhatsApp na hora
-          if (channel === 'email') {
-            if (contact.email) {
-              await sendSurveyEmail({
-                to: contact.email,
-                name: contact.name,
-                surveyTitle: survey.title,
-                surveyUrl,
-              });
-            } else {
-              throw new Error('Contato sem e-mail cadastrado');
-            }
-          } else if (channel === 'whatsapp') {
-            if (contact.phone) {
-              await sendWhatsAppTemplate({
-                phone: contact.phone,
-                name: contact.name,
-                surveyUrl,
-              });
-            } else {
-              throw new Error('Contato sem telefone cadastrado');
-            }
-          }
-
-          // Sucesso: atualiza status para 'sent'
-          await query(
-            `UPDATE dispatch_tokens SET status = 'sent', sent_at = NOW() WHERE id = $1`,
-            [tokenId]
-          );
-          console.log(`[Disparo] ✅ Enviado para ${contact.name} (${channel})`);
-        } catch (err) {
-          // Falha: atualiza status para 'failed'
-          console.error(`[Disparo] ❌ Falha no envio para ${contact.name}: ${err.message}`);
-          await query(
-            `UPDATE dispatch_tokens SET status = 'failed' WHERE id = $1`,
-            [tokenId]
-          );
-        }
-      }
-    });
+      await query(
+        `INSERT INTO dispatch_tokens (survey_id, contact_id, token, channel, status)
+         VALUES ($1, $2, $3, $4, 'pending')`,
+        [survey_id, contact.id, token, channel]
+      );
+    }
 
     // Resposta imediata 202 para o admin
     return res.status(202).json({
-      message: `Disparo iniciado para ${contactsRes.rows.length} contato(s) via ${channel}.`,
+      message: `Disparo de ${contactsRes.rows.length} mensagens agendado com sucesso.`,
       total_enqueued: contactsRes.rows.length,
       survey_id,
       channel,

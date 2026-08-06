@@ -44,6 +44,10 @@ async function runMigrationsAndSeed() {
 async function start() {
   await runMigrationsAndSeed();
 
+  // Inicializa o motor de disparos persistente em background
+  const { initQueue } = require('./src/utils/queue');
+  initQueue();
+
   const server = app.listen(PORT, '0.0.0.0', () => {
     console.log('');
     console.log('╔════════════════════════════════════════════╗');
