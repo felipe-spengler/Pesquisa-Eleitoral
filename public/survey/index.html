@@ -108,7 +108,16 @@ function getToken() {
 
 function showScreen(id) {
   ['loading-screen','survey-screen','answered-screen','notfound-screen','error-screen','success-screen'].forEach(s => {
-    document.getElementById(s).classList.toggle('hidden', s !== id);
+    const el = document.getElementById(s);
+    if (el) {
+      if (s === id) {
+        el.classList.remove('hidden');
+        el.style.display = 'flex';
+      } else {
+        el.classList.add('hidden');
+        el.style.display = 'none';
+      }
+    }
   });
 }
 
