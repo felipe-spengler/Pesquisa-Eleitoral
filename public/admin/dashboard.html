@@ -1,0 +1,902 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Dashboard — Painel Administrativo | Pesquisa Eleitoral</title>
+  <meta name="description" content="Painel administrativo do sistema de pesquisa eleitoral.">
+  <link rel="stylesheet" href="/css/admin.css">
+</head>
+<body>
+<div class="layout">
+
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-logo">
+      <h1>🗳️ Pesquisa Eleitoral</h1>
+      <p>Painel Administrativo</p>
+    </div>
+    <nav class="sidebar-nav">
+      <p class="nav-section-title">Principal</p>
+      <a class="nav-item active" data-page="overview" href="#" id="nav-overview">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6"/></svg>
+        Visão Geral
+      </a>
+      <a class="nav-item" data-page="surveys" href="#" id="nav-surveys">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5H7a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2V7a2 2 0 00-2-2h-2M9 5a2 2 0 002 2h2a2 2 0 002-2M9 5a2 2 0 012-2h2a2 2 0 012 2m-3 7h3m-3 4h3m-6-4h.01M9 16h.01"/></svg>
+        Pesquisas
+      </a>
+      <a class="nav-item" data-page="contacts" href="#" id="nav-contacts">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0zm6 3a2 2 0 11-4 0 2 2 0 014 0zM7 10a2 2 0 11-4 0 2 2 0 014 0z"/></svg>
+        Contatos
+      </a>
+      <a class="nav-item" data-page="dispatch" href="#" id="nav-dispatch">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 19l9 2-9-18-9 18 9-2zm0 0v-8"/></svg>
+        Disparos
+      </a>
+      <a class="nav-item" data-page="results" href="#" id="nav-results">
+        <svg class="icon" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+        Apuração
+      </a>
+    </nav>
+    <div class="sidebar-footer">
+      <div class="sidebar-user">
+        <div class="sidebar-user-avatar" id="user-avatar">A</div>
+        <div class="sidebar-user-info">
+          <p id="user-email-display">admin</p>
+          <p>Administrador</p>
+        </div>
+      </div>
+      <button class="btn btn-secondary w-full mt-2" id="btn-logout" style="font-size:13px;padding:8px;">
+        Sair
+      </button>
+    </div>
+  </aside>
+
+  <!-- Main Content -->
+  <main class="main-content">
+    <div class="topbar">
+      <div>
+        <div class="topbar-title" id="page-title">Visão Geral</div>
+        <div class="topbar-subtitle" id="page-subtitle">Resumo do sistema de pesquisas</div>
+      </div>
+      <div class="flex gap-2" id="topbar-actions"></div>
+    </div>
+    <div class="page-body" id="page-content">
+      <!-- Conteúdo dinâmico carregado via JS -->
+    </div>
+  </main>
+</div>
+
+<!-- Modal Container -->
+<div class="modal-overlay" id="modal-overlay">
+  <div class="modal" id="modal">
+    <div class="modal-header">
+      <h2 class="modal-title" id="modal-title">Modal</h2>
+      <button class="modal-close" id="modal-close">✕</button>
+    </div>
+    <div id="modal-body"></div>
+  </div>
+</div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<script>
+// =============================================
+// STATE
+// =============================================
+let currentPage = 'overview';
+let surveys = [];
+let contacts = [];
+let currentSurvey = null;
+
+// =============================================
+// AUTH
+// =============================================
+const token = localStorage.getItem('authToken');
+if (!token) { window.location.href = '/admin'; }
+
+const userEmail = localStorage.getItem('userEmail') || 'admin@admin.com';
+document.getElementById('user-email-display').textContent = userEmail.split('@')[0];
+document.getElementById('user-avatar').textContent = userEmail[0].toUpperCase();
+
+document.getElementById('btn-logout').addEventListener('click', async () => {
+  await fetch('/api/auth/logout', { method: 'POST' });
+  localStorage.clear();
+  window.location.href = '/admin';
+});
+
+// =============================================
+// API HELPER
+// =============================================
+async function api(url, opts = {}) {
+  const res = await fetch(url, {
+    ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      'Authorization': `Bearer ${token}`,
+      ...(opts.headers || {}),
+    },
+    body: opts.body ? (typeof opts.body === 'string' ? opts.body : JSON.stringify(opts.body)) : undefined,
+  });
+  const data = await res.json().catch(() => ({}));
+  if (res.status === 401) { localStorage.clear(); window.location.href = '/admin'; }
+  return { ok: res.ok, status: res.status, data };
+}
+
+// =============================================
+// TOAST
+// =============================================
+function toast(title, msg, type = 'info') {
+  const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
+  const el = document.createElement('div');
+  el.className = `toast toast-${type}`;
+  el.innerHTML = `<span class="toast-icon">${icons[type]}</span><div><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
+  document.getElementById('toast-container').appendChild(el);
+  requestAnimationFrame(() => el.classList.add('show'));
+  setTimeout(() => {
+    el.classList.remove('show');
+    setTimeout(() => el.remove(), 300);
+  }, 4000);
+}
+
+// =============================================
+// MODAL
+// =============================================
+function openModal(title, bodyHtml, onClose) {
+  document.getElementById('modal-title').textContent = title;
+  document.getElementById('modal-body').innerHTML = bodyHtml;
+  document.getElementById('modal-overlay').classList.add('show');
+  document._modalOnClose = onClose;
+}
+
+function closeModal() {
+  document.getElementById('modal-overlay').classList.remove('show');
+  if (document._modalOnClose) document._modalOnClose();
+}
+
+document.getElementById('modal-close').addEventListener('click', closeModal);
+document.getElementById('modal-overlay').addEventListener('click', (e) => {
+  if (e.target === document.getElementById('modal-overlay')) closeModal();
+});
+
+// =============================================
+// NAVIGATION
+// =============================================
+function setPage(page) {
+  currentPage = page;
+  document.querySelectorAll('.nav-item').forEach(el => {
+    el.classList.toggle('active', el.dataset.page === page);
+  });
+  const pages = {
+    overview: { title: 'Visão Geral', sub: 'Resumo do sistema de pesquisas' },
+    surveys:  { title: 'Pesquisas', sub: 'Gerencie suas pesquisas eleitorais' },
+    contacts: { title: 'Contatos', sub: 'Gerencie e importe contatos' },
+    dispatch: { title: 'Disparos', sub: 'Envie pesquisas via WhatsApp ou E-mail' },
+    results:  { title: 'Apuração', sub: 'Visualize os resultados das pesquisas' },
+  };
+  const p = pages[page] || { title: page, sub: '' };
+  document.getElementById('page-title').textContent = p.title;
+  document.getElementById('page-subtitle').textContent = p.sub;
+  document.getElementById('topbar-actions').innerHTML = '';
+  renderPage(page);
+}
+
+document.querySelectorAll('.nav-item').forEach(el => {
+  el.addEventListener('click', (e) => { e.preventDefault(); setPage(el.dataset.page); });
+});
+
+// =============================================
+// PAGE RENDERERS
+// =============================================
+async function renderPage(page) {
+  const content = document.getElementById('page-content');
+  content.innerHTML = `<div class="flex items-center gap-3" style="color:var(--text-muted)"><div class="spinner"></div> Carregando...</div>`;
+
+  switch (page) {
+    case 'overview':  await renderOverview(); break;
+    case 'surveys':   await renderSurveys(); break;
+    case 'contacts':  await renderContacts(); break;
+    case 'dispatch':  await renderDispatch(); break;
+    case 'results':   await renderResults(); break;
+  }
+}
+
+// ---- OVERVIEW ----
+async function renderOverview() {
+  const { data: sv } = await api('/api/admin/surveys');
+  const { data: ct } = await api('/api/admin/contacts');
+  surveys = sv || [];
+  contacts = ct || [];
+
+  const activeSurveys = surveys.filter(s => s.is_active).length;
+
+  document.getElementById('page-content').innerHTML = `
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(99,102,241,0.15)">📊</div>
+        <div class="stat-value">${surveys.length}</div>
+        <div class="stat-label">Total de Pesquisas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(16,185,129,0.15)">✅</div>
+        <div class="stat-value">${activeSurveys}</div>
+        <div class="stat-label">Pesquisas Ativas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(245,158,11,0.15)">👥</div>
+        <div class="stat-value">${contacts.length}</div>
+        <div class="stat-label">Contatos Cadastrados</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div>
+          <div class="card-title">Pesquisas Recentes</div>
+          <div class="card-subtitle">Últimas pesquisas criadas</div>
+        </div>
+        <button class="btn btn-primary btn-sm" onclick="setPage('surveys')">Ver todas</button>
+      </div>
+      ${surveys.length === 0 ? `
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <h3>Nenhuma pesquisa criada</h3>
+          <p>Clique em "Pesquisas" no menu para criar sua primeira pesquisa.</p>
+        </div>
+      ` : `
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>Título</th><th>Status</th><th>Criada em</th><th>Ações</th></tr></thead>
+            <tbody>
+              ${surveys.slice(0,5).map(s => `
+                <tr>
+                  <td style="font-weight:600;color:var(--text-primary)">${s.title}</td>
+                  <td><span class="badge ${s.is_active ? 'badge-success' : 'badge-gray'}">${s.is_active ? '● Ativa' : '○ Inativa'}</span></td>
+                  <td>${new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
+                  <td>
+                    <button class="btn btn-secondary btn-sm" onclick="editSurvey(${s.id})">Editar</button>
+                    <button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="viewResults(${s.id})">Resultados</button>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `}
+    </div>
+  `;
+}
+
+// ---- SURVEYS ----
+async function renderSurveys() {
+  const { data } = await api('/api/admin/surveys');
+  surveys = data || [];
+
+  const btn = document.getElementById('topbar-actions');
+  btn.innerHTML = `<button class="btn btn-primary" id="btn-new-survey">+ Nova Pesquisa</button>`;
+  document.getElementById('btn-new-survey').addEventListener('click', () => openNewSurveyModal());
+
+  document.getElementById('page-content').innerHTML = `
+    <div class="card">
+      ${surveys.length === 0 ? `
+        <div class="empty-state">
+          <div class="icon">📋</div>
+          <h3>Nenhuma pesquisa criada ainda</h3>
+          <p>Crie sua primeira pesquisa eleitoral clicando no botão acima.</p>
+        </div>
+      ` : `
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>ID</th><th>Título</th><th>Status</th><th>Criada em</th><th>Ações</th></tr></thead>
+            <tbody id="surveys-tbody">
+              ${surveys.map(s => surveyRow(s)).join('')}
+            </tbody>
+          </table>
+        </div>
+      `}
+    </div>
+  `;
+
+  bindSurveyActions();
+}
+
+function surveyRow(s) {
+  return `
+    <tr id="survey-row-${s.id}">
+      <td style="color:var(--text-muted)">#${s.id}</td>
+      <td style="font-weight:600;color:var(--text-primary)">${s.title}</td>
+      <td><span class="badge ${s.is_active ? 'badge-success' : 'badge-gray'}">${s.is_active ? '● Ativa' : '○ Inativa'}</span></td>
+      <td>${new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
+      <td>
+        <button class="btn btn-secondary btn-sm" onclick="editSurvey(${s.id})">✏️ Editar</button>
+        <button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="viewResults(${s.id})">📊 Resultados</button>
+        <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="deleteSurvey(${s.id})">🗑️ Excluir</button>
+      </td>
+    </tr>
+  `;
+}
+
+function bindSurveyActions() {}
+
+function openNewSurveyModal() {
+  openModal('Nova Pesquisa', `
+    <form id="new-survey-form">
+      <div class="form-group">
+        <label class="form-label">Título da Pesquisa</label>
+        <input type="text" class="form-control" id="new-survey-title" placeholder="Ex: Pesquisa Municipal 2026" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Status</label>
+        <select class="form-control" id="new-survey-status">
+          <option value="true">Ativa</option>
+          <option value="false">Inativa</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary w-full">Criar Pesquisa</button>
+    </form>
+  `);
+
+  document.getElementById('new-survey-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const title = document.getElementById('new-survey-title').value.trim();
+    const is_active = document.getElementById('new-survey-status').value === 'true';
+    const { ok, data } = await api('/api/admin/surveys', { method:'POST', body:{ title, is_active } });
+    if (ok) {
+      toast('Sucesso!', 'Pesquisa criada com sucesso.', 'success');
+      closeModal();
+      await renderSurveys();
+      editSurvey(data.id); // Abrir editor de perguntas
+    } else {
+      toast('Erro', data.error || 'Falha ao criar pesquisa.', 'error');
+    }
+  });
+}
+
+async function editSurvey(id) {
+  setPage('surveys');
+  const { data: survey } = await api(`/api/admin/surveys/${id}`);
+  currentSurvey = survey;
+
+  document.getElementById('page-title').textContent = `Editando: ${survey.title}`;
+  document.getElementById('page-subtitle').textContent = `ID #${survey.id}`;
+
+  const topbarActions = document.getElementById('topbar-actions');
+  topbarActions.innerHTML = `
+    <button class="btn btn-secondary btn-sm" onclick="renderSurveys()">← Voltar</button>
+    <button class="btn btn-primary btn-sm" id="btn-add-question">+ Adicionar Pergunta</button>
+  `;
+  document.getElementById('btn-add-question').addEventListener('click', () => openAddQuestionModal(survey.id));
+
+  renderSurveyEditor(survey);
+}
+
+function renderSurveyEditor(survey) {
+  document.getElementById('page-content').innerHTML = `
+    <div class="card mb-4">
+      <div class="card-header">
+        <div>
+          <div class="card-title">${survey.title}</div>
+          <div class="card-subtitle">Status: <span class="badge ${survey.is_active ? 'badge-success' : 'badge-gray'}">${survey.is_active ? 'Ativa' : 'Inativa'}</span></div>
+        </div>
+        <button class="btn btn-secondary btn-sm" onclick="toggleSurveyStatus(${survey.id}, ${!survey.is_active})">
+          ${survey.is_active ? 'Desativar' : 'Ativar'}
+        </button>
+      </div>
+    </div>
+
+    <div id="questions-container">
+      ${survey.questions.length === 0 ? `
+        <div class="empty-state">
+          <div class="icon">❓</div>
+          <h3>Nenhuma pergunta criada</h3>
+          <p>Adicione perguntas clicando no botão "Adicionar Pergunta".</p>
+        </div>
+      ` : survey.questions.map((q, i) => renderQuestionCard(q, i + 1)).join('')}
+    </div>
+  `;
+}
+
+function renderQuestionCard(q, num) {
+  const typeLabels = { single_choice: '☑️ Escolha Única', multiple_choice: '☑️ Múltipla Escolha', text: '📝 Texto Aberto' };
+  const hasOptions = q.type !== 'text';
+  return `
+    <div class="question-card" id="qcard-${q.id}">
+      <div class="flex justify-between items-center mb-4">
+        <div>
+          <span class="badge badge-info">${typeLabels[q.type]}</span>
+          <span class="text-muted text-xs" style="margin-left:8px">Pergunta ${num}</span>
+        </div>
+        <button class="btn btn-danger btn-sm" onclick="deleteQuestion(${q.id})">Remover</button>
+      </div>
+      <p style="font-weight:600;color:var(--text-primary);margin-bottom:${hasOptions ? '16px' : '0'}">${q.question_text}</p>
+      ${hasOptions ? `
+        <div class="options-container" id="opts-${q.id}">
+          ${q.options.map(o => `
+            <div class="option-row" id="opt-row-${o.id}">
+              <span class="badge badge-gray" style="flex:1">○ ${o.option_text}</span>
+              <button class="btn btn-danger btn-sm" onclick="deleteOption(${o.id}, ${q.id})">✕</button>
+            </div>
+          `).join('')}
+          <div class="option-row mt-2">
+            <input type="text" class="form-control" id="new-opt-${q.id}" placeholder="Nova opção..." style="flex:1">
+            <button class="btn btn-secondary btn-sm" onclick="addOption(${q.id})">+ Adicionar</button>
+          </div>
+        </div>
+      ` : ''}
+    </div>
+  `;
+}
+
+async function toggleSurveyStatus(id, isActive) {
+  const { ok } = await api(`/api/admin/surveys/${id}`, { method:'PUT', body:{ is_active: isActive } });
+  if (ok) { toast('Sucesso', `Pesquisa ${isActive ? 'ativada' : 'desativada'}.`, 'success'); editSurvey(id); }
+}
+
+function openAddQuestionModal(surveyId) {
+  openModal('Adicionar Pergunta', `
+    <form id="add-question-form">
+      <div class="form-group">
+        <label class="form-label">Texto da Pergunta</label>
+        <textarea class="form-control" id="q-text" rows="3" placeholder="Digite a pergunta..." required></textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo</label>
+        <select class="form-control" id="q-type" onchange="toggleOptionsInput(this.value)">
+          <option value="single_choice">Escolha Única</option>
+          <option value="multiple_choice">Múltipla Escolha</option>
+          <option value="text">Texto Aberto</option>
+        </select>
+      </div>
+      <div id="options-input">
+        <label class="form-label">Opções (uma por linha)</label>
+        <textarea class="form-control" id="q-options" rows="4" placeholder="Opção 1&#10;Opção 2&#10;Opção 3"></textarea>
+      </div>
+      <button type="submit" class="btn btn-primary w-full mt-4">Salvar Pergunta</button>
+    </form>
+  `);
+
+  document.getElementById('add-question-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const question_text = document.getElementById('q-text').value.trim();
+    const type = document.getElementById('q-type').value;
+    const optText = document.getElementById('q-options').value;
+    const options = type !== 'text' ? optText.split('\n').filter(o => o.trim()).map(o => ({ option_text: o.trim() })) : [];
+
+    const { ok, data } = await api(`/api/admin/surveys/${surveyId}/questions`, {
+      method: 'POST',
+      body: { question_text, type, options },
+    });
+    if (ok) {
+      toast('Sucesso!', 'Pergunta adicionada.', 'success');
+      closeModal();
+      editSurvey(surveyId);
+    } else {
+      toast('Erro', data.error || 'Falha ao adicionar pergunta.', 'error');
+    }
+  });
+}
+
+function toggleOptionsInput(type) {
+  document.getElementById('options-input').style.display = type === 'text' ? 'none' : 'block';
+}
+
+async function deleteQuestion(id) {
+  if (!confirm('Remover esta pergunta e todas as suas opções?')) return;
+  const { ok } = await api(`/api/admin/questions/${id}`, { method:'DELETE' });
+  if (ok) { toast('Removido', 'Pergunta excluída.', 'success'); editSurvey(currentSurvey.id); }
+}
+
+async function addOption(questionId) {
+  const input = document.getElementById(`new-opt-${questionId}`);
+  const option_text = input.value.trim();
+  if (!option_text) return;
+  const { ok, data } = await api(`/api/admin/questions/${questionId}/options`, { method:'POST', body:{ option_text } });
+  if (ok) {
+    input.value = '';
+    toast('Adicionado', 'Opção criada.', 'success');
+    editSurvey(currentSurvey.id);
+  } else {
+    toast('Erro', data.error, 'error');
+  }
+}
+
+async function deleteOption(optId, questionId) {
+  const { ok } = await api(`/api/admin/options/${optId}`, { method:'DELETE' });
+  if (ok) { document.getElementById(`opt-row-${optId}`).remove(); }
+}
+
+async function deleteSurvey(id) {
+  if (!confirm('Excluir esta pesquisa e todos os dados associados? Esta ação é irreversível.')) return;
+  const { ok } = await api(`/api/admin/surveys/${id}`, { method:'DELETE' });
+  if (ok) { toast('Excluído', 'Pesquisa removida.', 'success'); renderSurveys(); }
+}
+
+// ---- CONTACTS ----
+async function renderContacts() {
+  const { data } = await api('/api/admin/contacts');
+  contacts = data || [];
+
+  document.getElementById('topbar-actions').innerHTML = `<button class="btn btn-primary" id="btn-import-csv">📁 Importar CSV</button>`;
+  document.getElementById('btn-import-csv').addEventListener('click', openImportModal);
+
+  document.getElementById('page-content').innerHTML = `
+    <div class="card mb-4">
+      <div class="card-title mb-4">📁 Importar Contatos via CSV</div>
+      <div class="file-drop-zone" id="drop-zone" onclick="document.getElementById('csv-file').click()">
+        <input type="file" id="csv-file" accept=".csv" class="hidden">
+        <div class="upload-icon">📂</div>
+        <p>Arraste e solte um arquivo <strong>.csv</strong> ou clique para selecionar</p>
+        <p class="text-xs mt-2" style="color:var(--text-muted)">Colunas esperadas: <strong>nome, email, telefone</strong></p>
+      </div>
+      <div id="import-status" class="mt-4 hidden"></div>
+    </div>
+
+    <div class="card">
+      <div class="card-header">
+        <div class="card-title">👥 Contatos Cadastrados (${contacts.length})</div>
+      </div>
+      ${contacts.length === 0 ? `
+        <div class="empty-state"><div class="icon">👥</div><h3>Nenhum contato</h3><p>Importe um CSV para começar.</p></div>
+      ` : `
+        <div class="table-wrapper">
+          <table>
+            <thead><tr><th>ID</th><th>Nome</th><th>E-mail</th><th>Telefone</th></tr></thead>
+            <tbody>
+              ${contacts.slice(0,200).map(c => `
+                <tr>
+                  <td style="color:var(--text-muted)">#${c.id}</td>
+                  <td style="color:var(--text-primary);font-weight:500">${c.name || '—'}</td>
+                  <td>${c.email || '—'}</td>
+                  <td>${c.phone || '—'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `}
+    </div>
+  `;
+
+  setupCsvUpload();
+}
+
+function setupCsvUpload() {
+  const dropZone = document.getElementById('drop-zone');
+  const fileInput = document.getElementById('csv-file');
+  const status = document.getElementById('import-status');
+
+  if (!dropZone || !fileInput) return;
+
+  const handleFile = async (file) => {
+    if (!file || !file.name.endsWith('.csv')) {
+      toast('Erro', 'Selecione um arquivo .csv válido.', 'error');
+      return;
+    }
+    status.innerHTML = `<div class="flex items-center gap-3"><div class="spinner"></div> Importando...</div>`;
+    status.classList.remove('hidden');
+
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const res = await fetch('/api/admin/contacts/import', {
+      method: 'POST',
+      headers: { 'Authorization': `Bearer ${token}` },
+      body: formData,
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      status.innerHTML = `<div class="badge badge-success" style="padding:10px 16px;font-size:14px">✅ ${data.message}</div>`;
+      toast('Importação concluída!', data.message, 'success');
+      setTimeout(() => renderContacts(), 1500);
+    } else {
+      status.innerHTML = `<div class="badge badge-danger" style="padding:10px 16px;font-size:14px">❌ ${data.error}</div>`;
+      toast('Erro', data.error, 'error');
+    }
+  };
+
+  fileInput.addEventListener('change', (e) => handleFile(e.target.files[0]));
+  dropZone.addEventListener('dragover', (e) => { e.preventDefault(); dropZone.classList.add('dragging'); });
+  dropZone.addEventListener('dragleave', () => dropZone.classList.remove('dragging'));
+  dropZone.addEventListener('drop', (e) => {
+    e.preventDefault();
+    dropZone.classList.remove('dragging');
+    handleFile(e.dataTransfer.files[0]);
+  });
+}
+
+// ---- DISPATCH ----
+async function renderDispatch() {
+  const { data: sv } = await api('/api/admin/surveys');
+  const { data: ct } = await api('/api/admin/contacts');
+  surveys = (sv || []).filter(s => s.is_active);
+  contacts = ct || [];
+
+  document.getElementById('page-content').innerHTML = `
+    <div class="grid-2">
+      <!-- Config Panel -->
+      <div class="card">
+        <div class="card-title mb-4">⚙️ Configurar Disparo</div>
+
+        <div class="form-group">
+          <label class="form-label">Pesquisa</label>
+          <select class="form-control" id="dispatch-survey">
+            <option value="">Selecione a pesquisa...</option>
+            ${surveys.map(s => `<option value="${s.id}">${s.title}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Canal de Envio</label>
+          <div class="channel-grid">
+            <div class="channel-card" id="ch-whatsapp" onclick="selectChannel('whatsapp')">
+              <div class="channel-icon">📱</div>
+              <div class="channel-name">WhatsApp</div>
+              <div class="channel-desc">Via Meta Cloud API</div>
+            </div>
+            <div class="channel-card" id="ch-email" onclick="selectChannel('email')">
+              <div class="channel-icon">📧</div>
+              <div class="channel-name">E-mail</div>
+              <div class="channel-desc">Via SMTP</div>
+            </div>
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Contatos (${contacts.length} disponíveis)</label>
+          <div style="max-height:200px;overflow-y:auto;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px" id="contacts-list">
+            ${contacts.length === 0 ? '<p class="text-muted text-sm" style="padding:8px">Nenhum contato. Importe um CSV primeiro.</p>' : `
+              <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);margin-bottom:4px">
+                <input type="checkbox" id="select-all-contacts"> Selecionar todos (${contacts.length})
+              </label>
+              ${contacts.map(c => `
+                <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-radius:4px;" class="contact-check-label" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''">
+                  <input type="checkbox" class="contact-checkbox" value="${c.id}">
+                  <span style="color:var(--text-primary);font-weight:500">${c.name || '—'}</span>
+                  <span style="color:var(--text-muted)">${c.email || c.phone || ''}</span>
+                </label>
+              `).join('')}
+            `}
+          </div>
+        </div>
+
+        <button class="btn btn-primary w-full btn-lg" id="btn-start-dispatch" onclick="startDispatch()">
+          🚀 Iniciar Disparo
+        </button>
+
+        <div id="dispatch-result" class="mt-4 hidden"></div>
+      </div>
+
+      <!-- Status Panel -->
+      <div class="card">
+        <div class="card-title mb-4">📊 Status de Disparos</div>
+        <p class="text-muted text-sm">Selecione uma pesquisa e clique em "Verificar Status" para ver o andamento.</p>
+        <div class="mt-4">
+          <select class="form-control" id="status-survey-select">
+            <option value="">Selecione a pesquisa...</option>
+            ${(sv||[]).map(s => `<option value="${s.id}">${s.title}</option>`).join('')}
+          </select>
+          <button class="btn btn-secondary w-full mt-2" onclick="checkDispatchStatus()">🔄 Verificar Status</button>
+        </div>
+        <div id="dispatch-status-result" class="mt-4"></div>
+      </div>
+    </div>
+  `;
+
+  // Select all logic
+  const selectAll = document.getElementById('select-all-contacts');
+  if (selectAll) {
+    selectAll.addEventListener('change', (e) => {
+      document.querySelectorAll('.contact-checkbox').forEach(cb => cb.checked = e.target.checked);
+    });
+  }
+}
+
+let selectedChannel = '';
+function selectChannel(ch) {
+  selectedChannel = ch;
+  document.getElementById('ch-whatsapp').classList.toggle('selected', ch === 'whatsapp');
+  document.getElementById('ch-email').classList.toggle('selected', ch === 'email');
+}
+
+async function startDispatch() {
+  const surveyId = document.getElementById('dispatch-survey').value;
+  const contactIds = [...document.querySelectorAll('.contact-checkbox:checked')].map(cb => parseInt(cb.value));
+  const resultEl = document.getElementById('dispatch-result');
+
+  if (!surveyId) { toast('Atenção', 'Selecione uma pesquisa.', 'warning'); return; }
+  if (!selectedChannel) { toast('Atenção', 'Selecione um canal (WhatsApp ou E-mail).', 'warning'); return; }
+  if (contactIds.length === 0) { toast('Atenção', 'Selecione ao menos um contato.', 'warning'); return; }
+
+  const btn = document.getElementById('btn-start-dispatch');
+  btn.disabled = true;
+  btn.innerHTML = `<div class="spinner"></div> Iniciando...`;
+
+  const { ok, data } = await api('/api/dispatch', {
+    method: 'POST',
+    body: { survey_id: parseInt(surveyId), contact_ids: contactIds, channel: selectedChannel },
+  });
+
+  btn.disabled = false;
+  btn.innerHTML = '🚀 Iniciar Disparo';
+  resultEl.classList.remove('hidden');
+
+  if (ok) {
+    resultEl.innerHTML = `<div class="badge badge-success" style="padding:12px 16px;font-size:14px;display:block">✅ ${data.message}</div>`;
+    toast('Disparo iniciado!', data.message, 'success');
+  } else {
+    resultEl.innerHTML = `<div class="badge badge-danger" style="padding:12px 16px;font-size:14px;display:block">❌ ${data.error}</div>`;
+    toast('Erro', data.error, 'error');
+  }
+}
+
+async function checkDispatchStatus() {
+  const surveyId = document.getElementById('status-survey-select').value;
+  if (!surveyId) { toast('Atenção', 'Selecione uma pesquisa.', 'warning'); return; }
+
+  const { ok, data } = await api(`/api/admin/dispatch/status/${surveyId}`);
+  const el = document.getElementById('dispatch-status-result');
+
+  if (!ok) { el.innerHTML = `<p class="text-muted">Erro ao buscar status.</p>`; return; }
+
+  const statusColors = { pending:'badge-gray', sent:'badge-success', failed:'badge-danger', answered:'badge-info' };
+  const statusLabels = { pending:'⏳ Pendente', sent:'✅ Enviado', failed:'❌ Falhou', answered:'🗳️ Respondido' };
+
+  const total = data.reduce((a, r) => a + parseInt(r.count), 0);
+  el.innerHTML = `
+    <div style="margin-top:8px">
+      <p class="text-sm text-muted mb-4">Total de tokens: <strong style="color:var(--text-primary)">${total}</strong></p>
+      ${data.map(r => `
+        <div class="flex justify-between items-center" style="margin-bottom:10px">
+          <span class="badge ${statusColors[r.status]||'badge-gray'}">${statusLabels[r.status]||r.status}</span>
+          <span style="font-weight:700;color:var(--text-primary)">${r.count}</span>
+        </div>
+        <div class="progress-bar-wrap mb-2">
+          <div class="progress-bar-fill" style="width:${total>0?((r.count/total)*100).toFixed(1):0}%"></div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+// ---- RESULTS ----
+async function renderResults() {
+  const { data: sv } = await api('/api/admin/surveys');
+  surveys = sv || [];
+
+  document.getElementById('page-content').innerHTML = `
+    <div class="card mb-4">
+      <div class="card-title mb-4">📊 Selecione uma Pesquisa para ver os Resultados</div>
+      <div class="flex gap-3">
+        <select class="form-control" id="results-survey-select" style="max-width:400px">
+          <option value="">Selecione...</option>
+          ${surveys.map(s => `<option value="${s.id}">${s.title}</option>`).join('')}
+        </select>
+        <button class="btn btn-primary" onclick="loadResults()">Ver Resultados</button>
+        <button class="btn btn-secondary" id="btn-export" style="display:none" onclick="exportResults()">⬇️ Exportar CSV</button>
+      </div>
+    </div>
+    <div id="results-content"></div>
+  `;
+}
+
+let currentResultsSurveyId = null;
+
+async function loadResults() {
+  const surveyId = document.getElementById('results-survey-select').value;
+  if (!surveyId) { toast('Atenção', 'Selecione uma pesquisa.', 'warning'); return; }
+  currentResultsSurveyId = surveyId;
+
+  const el = document.getElementById('results-content');
+  el.innerHTML = `<div class="flex items-center gap-3"><div class="spinner"></div> Carregando resultados...</div>`;
+
+  const { ok, data } = await api(`/api/admin/surveys/${surveyId}/results`);
+  document.getElementById('btn-export').style.display = 'inline-flex';
+
+  if (!ok) { el.innerHTML = `<p class="text-muted">Erro ao carregar resultados.</p>`; return; }
+
+  const { survey, total_answered, dispatch_stats, questions } = data;
+  const total_dispatched = dispatch_stats.reduce((a, r) => a + parseInt(r.count), 0);
+
+  el.innerHTML = `
+    <div class="stats-grid mb-4">
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(99,102,241,0.15)">📤</div>
+        <div class="stat-value">${total_dispatched}</div>
+        <div class="stat-label">Total Disparado</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(16,185,129,0.15)">🗳️</div>
+        <div class="stat-value">${total_answered}</div>
+        <div class="stat-label">Respostas Recebidas</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(245,158,11,0.15)">📈</div>
+        <div class="stat-value">${total_dispatched > 0 ? ((total_answered / total_dispatched) * 100).toFixed(1) : 0}%</div>
+        <div class="stat-label">Taxa de Resposta</div>
+      </div>
+    </div>
+
+    ${questions.map(q => renderQuestionResult(q)).join('')}
+  `;
+}
+
+function renderQuestionResult(q) {
+  if (q.type === 'text') {
+    return `
+      <div class="card mb-4">
+        <div class="card-header">
+          <div class="card-title">${q.question.question_text}</div>
+          <span class="badge badge-info">Texto Aberto</span>
+        </div>
+        ${q.answers.length === 0 ? '<p class="text-muted text-sm">Nenhuma resposta ainda.</p>' : `
+          <div style="max-height:200px;overflow-y:auto">
+            ${q.answers.map(a => `
+              <div style="padding:10px;background:var(--bg-surface);border-radius:8px;margin-bottom:8px;font-size:14px;color:var(--text-secondary)">"${a}"</div>
+            `).join('')}
+          </div>
+        `}
+      </div>
+    `;
+  }
+
+  return `
+    <div class="card mb-4">
+      <div class="card-header">
+        <div class="card-title">${q.question.question_text}</div>
+        <div style="display:flex;align-items:center;gap:8px">
+          <span class="badge badge-info">${q.type === 'single_choice' ? 'Escolha Única' : 'Múltipla Escolha'}</span>
+          <span class="text-muted text-sm">${q.total_votes} votos</span>
+        </div>
+      </div>
+      ${q.options.map(o => `
+        <div style="margin-bottom:14px">
+          <div class="flex justify-between items-center mb-2">
+            <span style="font-size:14px;color:var(--text-secondary)">${o.option_text}</span>
+            <span style="font-weight:700;color:var(--text-primary)">${o.votes} <span class="text-muted">(${o.percentage}%)</span></span>
+          </div>
+          <div class="progress-bar-wrap">
+            <div class="progress-bar-fill" style="width:${o.percentage}%"></div>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+  `;
+}
+
+function exportResults() {
+  if (!currentResultsSurveyId) return;
+  window.open(`/api/admin/surveys/${currentResultsSurveyId}/export?token=${token}`, '_blank');
+  // Alternativa via header Authorization:
+  const link = document.createElement('a');
+  link.href = `/api/admin/surveys/${currentResultsSurveyId}/export`;
+  // Usar fetch para download com auth header
+  fetch(`/api/admin/surveys/${currentResultsSurveyId}/export`, {
+    headers: { 'Authorization': `Bearer ${token}` }
+  }).then(res => res.blob()).then(blob => {
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `pesquisa_${currentResultsSurveyId}_resultados.csv`;
+    a.click();
+    URL.revokeObjectURL(url);
+  });
+}
+
+function viewResults(id) {
+  setPage('results');
+  setTimeout(() => {
+    const sel = document.getElementById('results-survey-select');
+    if (sel) { sel.value = id; loadResults(); }
+  }, 100);
+}
+
+// =============================================
+// INIT
+// =============================================
+setPage('overview');
+</script>
+</body>
+</html>

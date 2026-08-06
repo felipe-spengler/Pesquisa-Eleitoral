@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Pesquisa Eleitoral — Sua Participação</title>
+  <meta name="description" content="Formulário de pesquisa eleitoral. Sua opinião é importante.">
+  <meta name="robots" content="noindex, nofollow">
+  <link rel="stylesheet" href="/css/survey.css">
+</head>
+<body>
+
+  <!-- Loading State -->
+  <div class="survey-wrapper" id="loading-screen">
+    <div class="state-screen">
+      <div class="state-icon">⏳</div>
+      <h1 class="state-title">Carregando...</h1>
+      <p class="state-message">Aguarde enquanto validamos seu acesso.</p>
+    </div>
+  </div>
+
+  <!-- Survey Form (hidden initially) -->
+  <div class="survey-wrapper hidden" id="survey-screen">
+    <!-- Header -->
+    <header class="survey-header">
+      <div class="survey-logo">
+        <div class="survey-logo-dot"></div>
+        Pesquisa Eleitoral Oficial
+      </div>
+      <h1 class="survey-title" id="survey-title">Pesquisa</h1>
+      <p class="survey-subtitle" id="survey-subtitle">Responda às perguntas abaixo. Sua participação é anônima.</p>
+    </header>
+
+    <!-- Progress -->
+    <div class="survey-progress">
+      <div class="progress-info">
+        <span id="progress-label">Pergunta 0 de 0</span>
+        <span id="progress-pct">0%</span>
+      </div>
+      <div class="progress-track">
+        <div class="progress-fill" id="progress-fill" style="width:0%"></div>
+      </div>
+    </div>
+
+    <!-- Questions Container -->
+    <div id="questions-container" style="width:100%;max-width:720px"></div>
+
+    <!-- Submit -->
+    <div class="submit-section">
+      <button class="btn-submit" id="btn-submit" onclick="submitSurvey()">
+        <span id="submit-text">✅ Enviar Minhas Respostas</span>
+        <div class="spinner hidden" id="submit-spinner" style="border-top-color:white;border-color:rgba(255,255,255,0.3)"></div>
+      </button>
+      <p style="text-align:center;font-size:12px;color:var(--text-3);margin-top:12px">
+        🔒 Suas respostas são registradas de forma segura e anônima.
+      </p>
+    </div>
+  </div>
+
+  <!-- Answered State -->
+  <div class="survey-wrapper hidden" id="answered-screen">
+    <div class="state-screen">
+      <div class="success-check">✅</div>
+      <h1 class="state-title">Obrigado pela Participação!</h1>
+      <p class="state-message">Sua resposta já foi registrada com sucesso. Agradecemos sua contribuição para esta pesquisa.</p>
+    </div>
+  </div>
+
+  <!-- Not Found State -->
+  <div class="survey-wrapper hidden" id="notfound-screen">
+    <div class="state-screen">
+      <div class="state-icon">🔍</div>
+      <h1 class="state-title">Pesquisa não encontrada</h1>
+      <p class="state-message">O link que você acessou é inválido ou a pesquisa foi encerrada. Verifique o link e tente novamente.</p>
+    </div>
+  </div>
+
+  <!-- Error State -->
+  <div class="survey-wrapper hidden" id="error-screen">
+    <div class="state-screen">
+      <div class="state-icon">⚠️</div>
+      <h1 class="state-title">Erro ao carregar</h1>
+      <p class="state-message" id="error-screen-msg">Ocorreu um erro inesperado. Por favor, recarregue a página.</p>
+    </div>
+  </div>
+
+  <!-- Success After Submit -->
+  <div class="survey-wrapper hidden" id="success-screen">
+    <div class="state-screen">
+      <div class="success-check">🎉</div>
+      <h1 class="state-title">Resposta Registrada!</h1>
+      <p class="state-message">Sua participação foi confirmada. Muito obrigado pela sua contribuição nesta pesquisa eleitoral!</p>
+    </div>
+  </div>
+
+  <footer class="survey-footer">
+    🗳️ Pesquisa Eleitoral &mdash; Sua voz importa
+  </footer>
+
+<script>
+// =============================================
+// UTILS
+// =============================================
+function getToken() {
+  const parts = window.location.pathname.split('/');
+  return parts[parts.length - 1] || parts[parts.length - 2];
+}
+
+function showScreen(id) {
+  ['loading-screen','survey-screen','answered-screen','notfound-screen','error-screen','success-screen'].forEach(s => {
+    document.getElementById(s).classList.toggle('hidden', s !== id);
+  });
+}
+
+// =============================================
+// STATE
+// =============================================
+let surveyData = null;
+let answers = {}; // { question_id: { option_ids: [], text_answer: '' } }
+const surveyToken = getToken();
+
+// =============================================
+// LOAD SURVEY
+// =============================================
+async function loadSurvey() {
+  try {
+    const res = await fetch(`/api/survey/${surveyToken}`);
+    const data = await res.json();
+
+    if (res.status === 404 || data.code === 'NOT_FOUND') {
+      showScreen('notfound-screen');
+      return;
+    }
+
+    if (data.status === 'answered') {
+      showScreen('answered-screen');
+      return;
+    }
+
+    if (data.code === 'SURVEY_INACTIVE') {
+      document.getElementById('error-screen-msg').textContent = 'Esta pesquisa está encerrada no momento.';
+      showScreen('error-screen');
+      return;
+    }
+
+    if (!res.ok) {
+      document.getElementById('error-screen-msg').textContent = data.error || 'Erro ao carregar pesquisa.';
+      showScreen('error-screen');
+      return;
+    }
+
+    surveyData = data;
+    renderSurvey(data);
+    showScreen('survey-screen');
+  } catch (err) {
+    console.error('Erro ao carregar survey:', err);
+    showScreen('error-screen');
+  }
+}
+
+// =============================================
+// RENDER SURVEY
+// =============================================
+function renderSurvey(data) {
+  document.title = `${data.survey.title} — Pesquisa Eleitoral`;
+  document.getElementById('survey-title').textContent = data.survey.title;
+  document.getElementById('survey-subtitle').textContent =
+    `${data.questions.length} pergunta${data.questions.length !== 1 ? 's' : ''} · Responda com atenção`;
+
+  updateProgress(0, data.questions.length);
+
+  const container = document.getElementById('questions-container');
+  container.innerHTML = '';
+
+  data.questions.forEach((q, i) => {
+    container.appendChild(buildQuestionEl(q, i + 1, data.questions.length));
+    answers[q.id] = { option_ids: [], text_answer: '' };
+  });
+}
+
+function buildQuestionEl(q, num, total) {
+  const wrapper = document.createElement('div');
+  wrapper.className = 'question-card';
+  wrapper.id = `q-${q.id}`;
+  wrapper.style.animationDelay = `${num * 0.08}s`;
+
+  let inputsHtml = '';
+
+  if (q.type === 'text') {
+    inputsHtml = `
+      <textarea
+        class="text-answer"
+        id="text-${q.id}"
+        placeholder="Digite sua resposta aqui..."
+        oninput="onTextChange(${q.id}, this.value)"
+        rows="4"
+      ></textarea>
+    `;
+  } else {
+    const inputType = q.type === 'multiple_choice' ? 'checkbox' : 'radio';
+    const optionClass = q.type === 'multiple_choice' ? 'checkbox-type' : '';
+    inputsHtml = `
+      <div class="options-list" id="opts-${q.id}">
+        ${q.options.map(o => `
+          <label class="option-label ${optionClass}" id="opt-label-${o.id}" onclick="selectOption(${q.id}, ${o.id}, '${inputType}', this)">
+            <input type="${inputType}" name="q-${q.id}" value="${o.id}" class="hidden">
+            <div class="option-check"></div>
+            <span class="option-text">${o.option_text}</span>
+          </label>
+        `).join('')}
+      </div>
+    `;
+  }
+
+  wrapper.innerHTML = `
+    <div class="question-number">Pergunta ${num} de ${total}</div>
+    <p class="question-text">${q.question_text}</p>
+    ${inputsHtml}
+  `;
+
+  return wrapper;
+}
+
+// =============================================
+// INTERACTION
+// =============================================
+function selectOption(questionId, optionId, type, labelEl) {
+  const q = surveyData.questions.find(q => q.id === questionId);
+  if (!q) return;
+
+  if (type === 'radio') {
+    // Remove selected from all options of this question
+    q.options.forEach(o => {
+      const label = document.getElementById(`opt-label-${o.id}`);
+      if (label) label.classList.remove('selected');
+    });
+    answers[questionId].option_ids = [optionId];
+    labelEl.classList.add('selected');
+  } else {
+    // Checkbox: toggle
+    const idx = answers[questionId].option_ids.indexOf(optionId);
+    if (idx >= 0) {
+      answers[questionId].option_ids.splice(idx, 1);
+      labelEl.classList.remove('selected');
+    } else {
+      answers[questionId].option_ids.push(optionId);
+      labelEl.classList.add('selected');
+    }
+  }
+  updateProgressFromAnswers();
+}
+
+function onTextChange(questionId, value) {
+  answers[questionId].text_answer = value;
+  updateProgressFromAnswers();
+}
+
+function updateProgressFromAnswers() {
+  if (!surveyData) return;
+  let answered = 0;
+  surveyData.questions.forEach(q => {
+    const a = answers[q.id];
+    if (q.type === 'text' && a.text_answer.trim()) answered++;
+    else if (q.type !== 'text' && a.option_ids.length > 0) answered++;
+  });
+  updateProgress(answered, surveyData.questions.length);
+}
+
+function updateProgress(answered, total) {
+  const pct = total > 0 ? Math.round((answered / total) * 100) : 0;
+  document.getElementById('progress-fill').style.width = pct + '%';
+  document.getElementById('progress-label').textContent = `${answered} de ${total} respondidas`;
+  document.getElementById('progress-pct').textContent = pct + '%';
+}
+
+// =============================================
+// SUBMIT
+// =============================================
+async function submitSurvey() {
+  if (!surveyData) return;
+
+  // Validate all questions answered
+  const unanswered = surveyData.questions.filter(q => {
+    const a = answers[q.id];
+    if (q.type === 'text') return !a.text_answer.trim();
+    return a.option_ids.length === 0;
+  });
+
+  if (unanswered.length > 0) {
+    // Highlight first unanswered
+    const el = document.getElementById(`q-${unanswered[0].id}`);
+    if (el) {
+      el.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      el.style.borderColor = '#ef4444';
+      el.style.boxShadow = '0 0 0 2px rgba(239,68,68,0.3)';
+      setTimeout(() => { el.style.borderColor = ''; el.style.boxShadow = ''; }, 2000);
+    }
+    return;
+  }
+
+  // Build payload
+  const answersPayload = [];
+  surveyData.questions.forEach(q => {
+    const a = answers[q.id];
+    if (q.type === 'text') {
+      answersPayload.push({ question_id: q.id, text_answer: a.text_answer });
+    } else if (q.type === 'multiple_choice') {
+      a.option_ids.forEach(oid => {
+        answersPayload.push({ question_id: q.id, option_id: oid });
+      });
+    } else {
+      answersPayload.push({ question_id: q.id, option_id: a.option_ids[0] });
+    }
+  });
+
+  // Set loading
+  const btn = document.getElementById('btn-submit');
+  const submitText = document.getElementById('submit-text');
+  const submitSpinner = document.getElementById('submit-spinner');
+  btn.disabled = true;
+  submitText.textContent = 'Enviando...';
+  submitSpinner.classList.remove('hidden');
+
+  try {
+    const res = await fetch(`/api/survey/${surveyToken}/submit`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ answers: answersPayload }),
+    });
+    const data = await res.json();
+
+    if (res.ok) {
+      showScreen('success-screen');
+    } else if (res.status === 409 || data.status === 'answered') {
+      showScreen('answered-screen');
+    } else {
+      alert(data.error || 'Erro ao enviar respostas. Tente novamente.');
+      btn.disabled = false;
+      submitText.textContent = '✅ Enviar Minhas Respostas';
+      submitSpinner.classList.add('hidden');
+    }
+  } catch (err) {
+    alert('Erro de conexão. Verifique sua internet e tente novamente.');
+    btn.disabled = false;
+    submitText.textContent = '✅ Enviar Minhas Respostas';
+    submitSpinner.classList.add('hidden');
+  }
+}
+
+// =============================================
+// INIT
+// =============================================
+loadSurvey();
+</script>
+</body>
+</html>

@@ -1,0 +1,29 @@
+# Dependências Node.js
+node_modules/
+
+# Ambiente
+.env
+*.env.local
+
+# Logs
+*.log
+logs/
+npm-debug.log*
+
+# Build
+dist/
+build/
+
+# OS
+.DS_Store
+Thumbs.db
+
+# IDE
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Dados de teste
+*.csv
+!.env.example

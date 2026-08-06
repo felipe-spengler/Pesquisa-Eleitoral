@@ -1,0 +1,140 @@
+version: '3.9'
+
+# ==================================================
+# Pesquisa Eleitoral — Docker Compose
+# Serviços: App (4444) + PostgreSQL + Redis
+# ==================================================
+
+services:
+
+  # --------------------------------------------------
+  # Aplicação Principal (Backend + Frontend)
+  # --------------------------------------------------
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: pesquisa_app
+    restart: unless-stopped
+    ports:
+      - "4444:4444"
+    environment:
+      NODE_ENV: production
+      PORT: 4444
+      APP_URL: ${APP_URL:-http://localhost:4444}
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pesquisa_user}:${POSTGRES_PASSWORD:-senha_segura_troque}@postgres:5432/${POSTGRES_DB:-pesquisa_eleitoral}
+      REDIS_URL: redis://redis:6379
+      JWT_SECRET: ${JWT_SECRET:-troque_por_uma_string_muito_secreta}
+      # WhatsApp Meta Cloud API
+      META_WA_TOKEN: ${META_WA_TOKEN:-}
+      META_PHONE_ID: ${META_PHONE_ID:-}
+      META_TEMPLATE_NAME: ${META_TEMPLATE_NAME:-pesquisa_link}
+      # SMTP
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@pesquisa.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pesquisa_net
+    volumes:
+      - ./scripts:/app/scripts:ro  # Seed script acessível
+
+  # --------------------------------------------------
+  # Worker de Disparo Assíncrono (BullMQ)
+  # --------------------------------------------------
+  worker:
+    build:
+      context: .
+      dockerfile: Dockerfile
+      target: runner
+    container_name: pesquisa_worker
+    restart: unless-stopped
+    command: ["node", "src/workers/dispatchWorker.js"]
+    environment:
+      NODE_ENV: production
+      DATABASE_URL: postgresql://${POSTGRES_USER:-pesquisa_user}:${POSTGRES_PASSWORD:-senha_segura_troque}@postgres:5432/${POSTGRES_DB:-pesquisa_eleitoral}
+      REDIS_URL: redis://redis:6379
+      APP_URL: ${APP_URL:-http://localhost:4444}
+      META_WA_TOKEN: ${META_WA_TOKEN:-}
+      META_PHONE_ID: ${META_PHONE_ID:-}
+      META_TEMPLATE_NAME: ${META_TEMPLATE_NAME:-pesquisa_link}
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-noreply@pesquisa.com}
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    networks:
+      - pesquisa_net
+
+  # --------------------------------------------------
+  # PostgreSQL 16
+  # --------------------------------------------------
+  postgres:
+    image: postgres:16-alpine
+    container_name: pesquisa_postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-pesquisa_eleitoral}
+      POSTGRES_USER: ${POSTGRES_USER:-pesquisa_user}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-senha_segura_troque}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5435:5432"  # Porta não-padrão, acessível apenas localmente
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pesquisa_user} -d ${POSTGRES_DB:-pesquisa_eleitoral}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - pesquisa_net
+
+  # --------------------------------------------------
+  # Redis 7
+  # --------------------------------------------------
+  redis:
+    image: redis:7-alpine
+    container_name: pesquisa_redis
+    restart: unless-stopped
+    command: redis-server --save 60 1 --loglevel warning --maxmemory 256mb --maxmemory-policy allkeys-lru
+    volumes:
+      - redis_data:/data
+    ports:
+      - "127.0.0.1:6380:6379"  # Porta não-padrão, acessível apenas localmente
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - pesquisa_net
+
+# ==================================================
+# Volumes persistentes
+# ==================================================
+volumes:
+  postgres_data:
+    driver: local
+  redis_data:
+    driver: local
+
+# ==================================================
+# Rede isolada
+# ==================================================
+networks:
+  pesquisa_net:
+    driver: bridge
+    name: pesquisa_eleitoral_net
