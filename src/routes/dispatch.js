@@ -76,8 +76,12 @@ router.post('/', async (req, res) => {
       });
     }
 
-    // Adicionar todos os jobs à fila de uma vez
-    await dispatchQueue.addBulk(jobs);
+    // Adicionar todos os jobs à fila se o queue estiver ativo
+    if (dispatchQueue) {
+      await dispatchQueue.addBulk(jobs);
+    } else {
+      console.warn('[Dispatch] Redis offline. Salvou tokens no DB mas não enviou para a fila.');
+    }
 
     // Resposta imediata 202 — processamento acontece em background
     return res.status(202).json({

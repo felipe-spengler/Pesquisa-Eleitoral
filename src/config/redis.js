@@ -20,24 +20,35 @@ if (redisUrl.password) {
 
 const redisConnection = new IORedis(redisOptions);
 
+// Captura erros de forma robusta e amigável
 redisConnection.on('connect', () => console.log('[Redis] Conectado com sucesso'));
 redisConnection.on('error', (err) => {
-  // Evita poluir o console com loops infinitos de auth
-  if (err.message.includes('NOAUTH')) {
-    console.error('[Redis] Erro Crítico: Exige senha de autenticação.');
+  if (err.message.includes('WRONGPASS') || err.message.includes('NOAUTH')) {
+    console.warn('[Redis] Alerta: Problema de autenticação no Redis. O motor de disparo assíncrono pode falhar.');
   } else {
     console.error('[Redis] Erro de conexão:', err.message);
   }
 });
 
-const dispatchQueue = new Queue('dispatch', {
-  connection: redisConnection,
-  defaultJobOptions: {
-    attempts: 3,
-    backoff: { type: 'exponential', delay: 5000 },
-    removeOnComplete: 500,
-    removeOnFail: 200,
-  },
-});
+// Inicialização segura da fila
+let dispatchQueue = null;
+try {
+  dispatchQueue = new Queue('dispatch', {
+    connection: redisConnection,
+    defaultJobOptions: {
+      attempts: 3,
+      backoff: { type: 'exponential', delay: 5000 },
+      removeOnComplete: 500,
+      removeOnFail: 200,
+    },
+  });
+  
+  // Evita crash global por erro de conexão da fila
+  dispatchQueue.on('error', (err) => {
+    console.warn('[BullMQ] Erro na fila:', err.message);
+  });
+} catch (e) {
+  console.error('[BullMQ] Falha crítica ao inicializar fila:', e.message);
+}
 
 module.exports = { redisConnection, dispatchQueue };
