@@ -233,8 +233,13 @@ function renderSurvey() {
       const selectedClass = isSelected ? 'selected' : '';
       
       listWrapper.innerHTML += `
-        <label class="option-label ${optionClass} ${selectedClass}" id="opt-label-${o.id}" onclick="selectOption(${currentQuestion.id}, ${o.id}, '${inputType}', this)">
-          <input type="${inputType}" name="q-${currentQuestion.id}" value="${o.id}" class="hidden" ${isSelected ? 'checked' : ''}>
+        <label class="option-label ${optionClass} ${selectedClass}" id="opt-label-${o.id}">
+          <input type="${inputType}" 
+                 name="q-${currentQuestion.id}" 
+                 value="${o.id}" 
+                 class="hidden" 
+                 ${isSelected ? 'checked' : ''}
+                 onchange="handleOptionChange(${currentQuestion.id}, ${o.id}, '${inputType}')">
           <div class="option-check"></div>
           <span class="option-text">${o.option_text}</span>
         </label>
@@ -290,21 +295,25 @@ function prevQuestion() {
 }
 
 // =============================================
-// INTERACTION
+// INTERACTION & SELECTION HANDLERS
 // =============================================
-function selectOption(questionId, optionId, type, labelEl) {
-  const q = surveyData.questions.find(q => q.id === questionId);
-  if (!q) return;
+function handleOptionChange(questionId, optionId, type) {
+  const currentQuestion = surveyData.questions.find(q => q.id === questionId);
+  if (!currentQuestion) return;
+
+  const labelEl = document.getElementById(`opt-label-${optionId}`);
 
   if (type === 'radio') {
-    q.options.forEach(o => {
+    // Escolha única
+    currentQuestion.options.forEach(o => {
       const label = document.getElementById(`opt-label-${o.id}`);
       if (label) label.classList.remove('selected');
     });
-    answers[questionId].option_ids = [optionId];
-    labelEl.classList.add('selected');
     
-    // Auto-avançar em perguntas de Escolha Única após um pequeno delay para melhor UX
+    answers[questionId].option_ids = [optionId];
+    if (labelEl) labelEl.classList.add('selected');
+    
+    // Auto-avançar em escolha única para melhor UX no mobile
     setTimeout(() => {
       if (currentQuestionIndex < surveyData.questions.length - 1) {
         nextQuestion();
@@ -312,13 +321,17 @@ function selectOption(questionId, optionId, type, labelEl) {
     }, 250);
 
   } else {
-    const idx = answers[questionId].option_ids.indexOf(optionId);
-    if (idx >= 0) {
-      answers[questionId].option_ids.splice(idx, 1);
-      labelEl.classList.remove('selected');
+    // Múltipla escolha
+    const index = answers[questionId].option_ids.indexOf(optionId);
+    
+    if (index > -1) {
+      // Remove se já estava selecionada
+      answers[questionId].option_ids.splice(index, 1);
+      if (labelEl) labelEl.classList.remove('selected');
     } else {
+      // Adiciona
       answers[questionId].option_ids.push(optionId);
-      labelEl.classList.add('selected');
+      if (labelEl) labelEl.classList.add('selected');
     }
   }
 }
