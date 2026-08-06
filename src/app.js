@@ -76,6 +76,10 @@ app.use('/api/dispatch', dispatchRoutes);
 // =============================================
 // SPA Fallback para páginas do Admin e Survey
 // =============================================
+app.get('/', (req, res) => {
+  res.redirect('/admin');
+});
+
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'admin', 'login.html'));
 });

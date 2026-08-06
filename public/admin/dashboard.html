@@ -764,7 +764,7 @@ async function checkDispatchStatus() {
 // ---- RESULTS ----
 async function renderResults() {
   const { data: sv } = await api('/api/admin/surveys');
-  surveys = sv || [];
+  surveys = Array.isArray(sv) ? sv : [];
 
   document.getElementById('page-content').innerHTML = `
     <div class="card mb-4">
