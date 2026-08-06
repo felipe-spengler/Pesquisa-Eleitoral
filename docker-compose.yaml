@@ -47,6 +47,7 @@ services:
         condition: service_healthy
     networks:
       - pesquisa_net
+      - coolify
     volumes:
       - ./scripts:/app/scripts:ro  # Seed script acessível
 
@@ -142,3 +143,5 @@ networks:
   pesquisa_net:
     driver: bridge
     name: pesquisa_eleitoral_net
+  coolify:
+    external: true
