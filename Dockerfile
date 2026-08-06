@@ -44,9 +44,9 @@ EXPOSE 4444
 # Mudar para usuário não-root
 USER appuser
 
-# Health check
+# Health check robusto usando Node.js para evitar problemas de IPv6/localhost
 HEALTHCHECK --interval=30s --timeout=10s --start-period=40s --retries=3 \
-  CMD wget --no-verbose --tries=1 --spider http://localhost:4444/api/health || exit 1
+  CMD node -e "const http = require('http'); const req = http.request({ host: '127.0.0.1', port: 4444, path: '/api/health', timeout: 2000 }, (res) => { process.exit(res.statusCode === 200 ? 0 : 1); }); req.on('error', () => process.exit(1)); req.end();"
 
 # Comando de inicialização
 CMD ["node", "server.js"]
