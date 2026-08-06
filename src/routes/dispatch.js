@@ -2,7 +2,6 @@
 const express = require('express');
 const { v4: uuidv4 } = require('uuid');
 const { query } = require('../config/db');
-const { dispatchQueue } = require('../config/redis');
 const auth = require('../middleware/auth');
 
 const router = express.Router();
@@ -41,52 +40,71 @@ router.post('/', async (req, res) => {
       return res.status(404).json({ error: 'Nenhum contato encontrado.' });
     }
 
-    // Criar tokens e enfileirar jobs
-    const jobs = [];
-    for (const contact of contactsRes.rows) {
-      const token = uuidv4().replace(/-/g, '');
+    const { sendSurveyEmail } = require('../utils/mailer');
+    const { sendWhatsAppTemplate } = require('../utils/whatsapp');
 
-      // Inserir token no banco
-      const tokenRes = await query(
-        `INSERT INTO dispatch_tokens (survey_id, contact_id, token, channel, status)
-         VALUES ($1, $2, $3, $4, 'pending') RETURNING id`,
-        [survey_id, contact.id, token, channel]
-      );
+    // Executa o envio em background no próprio Node.js sem travar a requisição HTTP (Retorna 202)
+    setImmediate(async () => {
+      console.log(`[Disparo] Iniciando envio direto para ${contactsRes.rows.length} contatos via ${channel}`);
+      
+      for (const contact of contactsRes.rows) {
+        const token = uuidv4().replace(/-/g, '');
+        
+        // 1. Grava no DB como pending
+        const tokenRes = await query(
+          `INSERT INTO dispatch_tokens (survey_id, contact_id, token, channel, status)
+           VALUES ($1, $2, $3, $4, 'pending') RETURNING id`,
+          [survey_id, contact.id, token, channel]
+        );
+        const tokenId = tokenRes.rows[0].id;
+        const surveyUrl = `${process.env.APP_URL || 'http://localhost:4444'}/survey/${token}`;
 
-      const surveyUrl = `${process.env.APP_URL || 'http://localhost:4444'}/survey/${token}`;
+        try {
+          // 2. Tenta disparar o e-mail ou WhatsApp na hora
+          if (channel === 'email') {
+            if (contact.email) {
+              await sendSurveyEmail({
+                to: contact.email,
+                name: contact.name,
+                surveyTitle: survey.title,
+                surveyUrl,
+              });
+            } else {
+              throw new Error('Contato sem e-mail cadastrado');
+            }
+          } else if (channel === 'whatsapp') {
+            if (contact.phone) {
+              await sendWhatsAppTemplate({
+                phone: contact.phone,
+                name: contact.name,
+                surveyUrl,
+              });
+            } else {
+              throw new Error('Contato sem telefone cadastrado');
+            }
+          }
 
-      jobs.push({
-        name: `dispatch-${channel}`,
-        data: {
-          tokenId: tokenRes.rows[0].id,
-          token,
-          channel,
-          contact: {
-            id: contact.id,
-            name: contact.name,
-            email: contact.email,
-            phone: contact.phone,
-          },
-          survey: {
-            id: survey.id,
-            title: survey.title,
-          },
-          surveyUrl,
-        },
-      });
-    }
+          // Sucesso: atualiza status para 'sent'
+          await query(
+            `UPDATE dispatch_tokens SET status = 'sent', sent_at = NOW() WHERE id = $1`,
+            [tokenId]
+          );
+          console.log(`[Disparo] ✅ Enviado para ${contact.name} (${channel})`);
+        } catch (err) {
+          // Falha: atualiza status para 'failed'
+          console.error(`[Disparo] ❌ Falha no envio para ${contact.name}: ${err.message}`);
+          await query(
+            `UPDATE dispatch_tokens SET status = 'failed' WHERE id = $1`,
+            [tokenId]
+          );
+        }
+      }
+    });
 
-    // Adicionar todos os jobs à fila se o queue estiver ativo
-    if (dispatchQueue) {
-      await dispatchQueue.addBulk(jobs);
-    } else {
-      console.warn('[Dispatch] Redis offline. Salvou tokens no DB mas não enviou para a fila.');
-    }
-
-    // Resposta imediata 202 — processamento acontece em background
+    // Resposta imediata 202 para o admin
     return res.status(202).json({
-      message: `Disparo iniciado para ${jobs.length} contato(s) via ${channel}.`,
-      total_enqueued: jobs.length,
+      message: `Disparo iniciado para ${contactsRes.rows.length} contato(s) via ${channel}.`,
+      total_enqueued: contactsRes.rows.length,
       survey_id,
       channel,
     });
