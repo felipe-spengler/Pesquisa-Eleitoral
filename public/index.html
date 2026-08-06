@@ -1,0 +1,1960 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Tech Inteligente — Pesquisas Eleitorais com Inteligência</title>
+  <meta name="description" content="A Tech Inteligente oferece soluções completas de pesquisa eleitoral via WhatsApp e E-mail. Tecnologia de ponta para candidatos, partidos e institutos.">
+  <meta name="keywords" content="pesquisa eleitoral, tecnologia política, WhatsApp, pesquisa de intenção de voto, tech inteligente">
+  <meta property="og:title" content="Tech Inteligente — Pesquisas Eleitorais">
+  <meta property="og:description" content="Pesquisas eleitorais inteligentes via WhatsApp e E-mail. Resultados em tempo real.">
+  <meta property="og:type" content="website">
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800;900&display=swap" rel="stylesheet">
+  <style>
+    /* ============================================
+       RESET & BASE
+       ============================================ */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg:         #04070f;
+      --surface:    #080e1d;
+      --card:       #0d1628;
+      --card-2:     #111e33;
+      --border:     #1e2f47;
+      --border-2:   #2a3f5e;
+
+      --primary:    #6366f1;
+      --primary-l:  #818cf8;
+      --accent:     #8b5cf6;
+      --accent-l:   #a78bfa;
+      --cyan:       #06b6d4;
+      --cyan-l:     #22d3ee;
+      --green:      #10b981;
+
+      --text:       #f0f4ff;
+      --text-2:     #8fa3c0;
+      --text-3:     #4d6480;
+
+      --font: 'Inter', system-ui, sans-serif;
+
+      --glow-primary: rgba(99,102,241,0.25);
+      --glow-accent:  rgba(139,92,246,0.2);
+      --glow-cyan:    rgba(6,182,212,0.2);
+    }
+
+    html { scroll-behavior: smooth; font-size: 16px; }
+
+    body {
+      font-family: var(--font);
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      overflow-x: hidden;
+      -webkit-font-smoothing: antialiased;
+    }
+
+    /* ============================================
+       ANIMATED BACKGROUND
+       ============================================ */
+    .bg-layer {
+      position: fixed;
+      inset: 0;
+      pointer-events: none;
+      z-index: 0;
+      overflow: hidden;
+    }
+
+    .bg-orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      animation: orbFloat 12s ease-in-out infinite alternate;
+    }
+
+    .bg-orb-1 {
+      width: 600px; height: 600px;
+      top: -200px; left: -150px;
+      background: radial-gradient(circle, rgba(99,102,241,0.12), transparent 70%);
+      animation-delay: 0s;
+    }
+    .bg-orb-2 {
+      width: 500px; height: 500px;
+      top: 20%; right: -200px;
+      background: radial-gradient(circle, rgba(139,92,246,0.1), transparent 70%);
+      animation-delay: -4s;
+    }
+    .bg-orb-3 {
+      width: 400px; height: 400px;
+      bottom: 10%; left: 30%;
+      background: radial-gradient(circle, rgba(6,182,212,0.08), transparent 70%);
+      animation-delay: -8s;
+    }
+
+    @keyframes orbFloat {
+      from { transform: translate(0, 0) scale(1); }
+      to   { transform: translate(30px, -30px) scale(1.05); }
+    }
+
+    /* Grid dots pattern */
+    .bg-grid {
+      position: absolute;
+      inset: 0;
+      background-image:
+        radial-gradient(circle, rgba(255,255,255,0.04) 1px, transparent 1px);
+      background-size: 48px 48px;
+      mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 30%, transparent 100%);
+      -webkit-mask-image: radial-gradient(ellipse 80% 60% at 50% 50%, black 30%, transparent 100%);
+    }
+
+    /* ============================================
+       LAYOUT
+       ============================================ */
+    .container {
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0 24px;
+      position: relative;
+      z-index: 1;
+    }
+
+    section { position: relative; z-index: 1; }
+
+    /* ============================================
+       NAVBAR
+       ============================================ */
+    .navbar {
+      position: fixed;
+      top: 0; left: 0; right: 0;
+      z-index: 1000;
+      padding: 0 24px;
+      background: rgba(4, 7, 15, 0.8);
+      backdrop-filter: blur(20px);
+      -webkit-backdrop-filter: blur(20px);
+      border-bottom: 1px solid rgba(30, 47, 71, 0.6);
+      transition: all 0.3s ease;
+    }
+
+    .navbar-inner {
+      max-width: 1200px;
+      margin: 0 auto;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      height: 68px;
+    }
+
+    .navbar-brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      text-decoration: none;
+    }
+
+    .navbar-logo-icon {
+      width: 38px;
+      height: 38px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 11px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.35);
+      flex-shrink: 0;
+    }
+
+    .navbar-brand-name {
+      font-size: 17px;
+      font-weight: 800;
+      background: linear-gradient(135deg, #c7d2fe, #a5b4fc);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -0.4px;
+    }
+
+    .navbar-links {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      list-style: none;
+    }
+
+    .navbar-links a {
+      color: var(--text-2);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 500;
+      padding: 8px 14px;
+      border-radius: 8px;
+      transition: all 0.2s ease;
+    }
+
+    .navbar-links a:hover { color: var(--text); background: rgba(255,255,255,0.05); }
+
+    .navbar-cta {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .btn-nav-login {
+      font-size: 13.5px;
+      font-weight: 600;
+      color: var(--text-2);
+      text-decoration: none;
+      padding: 8px 16px;
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      transition: all 0.2s ease;
+      background: rgba(255,255,255,0.03);
+    }
+
+    .btn-nav-login:hover { color: var(--text); border-color: var(--border-2); }
+
+    .btn-nav-primary {
+      font-size: 13.5px;
+      font-weight: 700;
+      color: white;
+      text-decoration: none;
+      padding: 9px 20px;
+      border-radius: 9px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+      transition: all 0.2s ease;
+    }
+
+    .btn-nav-primary:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 24px rgba(99,102,241,0.45);
+    }
+
+    /* ============================================
+       HERO
+       ============================================ */
+    .hero {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      padding: 120px 0 80px;
+      text-align: center;
+      position: relative;
+    }
+
+    .hero .container { width: 100%; }
+
+    .hero-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      background: rgba(99,102,241,0.1);
+      border: 1px solid rgba(99,102,241,0.25);
+      border-radius: 999px;
+      padding: 6px 16px;
+      font-size: 12.5px;
+      font-weight: 700;
+      color: var(--primary-l);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 28px;
+      animation: fadeInDown 0.6s ease both;
+    }
+
+    .hero-badge-dot {
+      width: 6px; height: 6px;
+      background: var(--primary);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--primary);
+      animation: dotGlow 2s ease-in-out infinite;
+    }
+
+    @keyframes dotGlow {
+      0%, 100% { box-shadow: 0 0 4px var(--primary); }
+      50% { box-shadow: 0 0 14px var(--primary), 0 0 28px rgba(99,102,241,0.4); }
+    }
+
+    .hero-title {
+      font-size: clamp(40px, 7vw, 80px);
+      font-weight: 900;
+      letter-spacing: -2.5px;
+      line-height: 1.05;
+      margin-bottom: 24px;
+      animation: fadeInUp 0.7s 0.1s ease both;
+    }
+
+    .hero-title-solid {
+      color: var(--text);
+    }
+
+    .hero-title-gradient {
+      background: linear-gradient(135deg, var(--primary-l) 0%, var(--accent-l) 40%, var(--cyan-l) 100%);
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+
+    .hero-subtitle {
+      font-size: clamp(16px, 2.5vw, 20px);
+      color: var(--text-2);
+      max-width: 620px;
+      margin: 0 auto 40px;
+      line-height: 1.65;
+      font-weight: 400;
+      animation: fadeInUp 0.7s 0.2s ease both;
+    }
+
+    .hero-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+      margin-bottom: 60px;
+      animation: fadeInUp 0.7s 0.3s ease both;
+    }
+
+    .btn-primary {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 15px 28px;
+      border-radius: 13px;
+      font-size: 15px;
+      font-weight: 700;
+      color: white;
+      text-decoration: none;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      box-shadow: 0 8px 32px rgba(99,102,241,0.35);
+      transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+      border: none;
+      cursor: pointer;
+      font-family: var(--font);
+      position: relative;
+      overflow: hidden;
+    }
+
+    .btn-primary::before {
+      content: '';
+      position: absolute;
+      inset: 0;
+      background: linear-gradient(135deg, rgba(255,255,255,0.1), transparent);
+    }
+
+    .btn-primary:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 12px 40px rgba(99,102,241,0.5);
+    }
+
+    .btn-secondary {
+      display: inline-flex;
+      align-items: center;
+      gap: 9px;
+      padding: 14px 26px;
+      border-radius: 13px;
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text-2);
+      text-decoration: none;
+      background: rgba(255,255,255,0.04);
+      border: 1.5px solid var(--border);
+      transition: all 0.2s ease;
+    }
+
+    .btn-secondary:hover {
+      color: var(--text);
+      border-color: var(--border-2);
+      background: rgba(255,255,255,0.07);
+    }
+
+    /* Hero stats bar */
+    .hero-stats {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 0;
+      background: rgba(13, 22, 40, 0.8);
+      border: 1px solid var(--border);
+      border-radius: 18px;
+      padding: 0;
+      max-width: 700px;
+      margin: 0 auto;
+      overflow: hidden;
+      animation: fadeInUp 0.7s 0.4s ease both;
+      backdrop-filter: blur(12px);
+    }
+
+    .hero-stat {
+      flex: 1;
+      padding: 22px 20px;
+      text-align: center;
+      border-right: 1px solid var(--border);
+      position: relative;
+    }
+
+    .hero-stat:last-child { border-right: none; }
+
+    .hero-stat-value {
+      font-size: 28px;
+      font-weight: 900;
+      background: linear-gradient(135deg, var(--text), var(--primary-l));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+      letter-spacing: -1px;
+      line-height: 1;
+      margin-bottom: 5px;
+    }
+
+    .hero-stat-label {
+      font-size: 12px;
+      color: var(--text-3);
+      font-weight: 500;
+      letter-spacing: 0.2px;
+    }
+
+    /* ============================================
+       SECTION UTILS
+       ============================================ */
+    .section-tag {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      background: rgba(99,102,241,0.08);
+      border: 1px solid rgba(99,102,241,0.2);
+      border-radius: 999px;
+      padding: 4px 14px;
+      font-size: 11.5px;
+      font-weight: 700;
+      color: var(--primary-l);
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 16px;
+    }
+
+    .section-title {
+      font-size: clamp(28px, 5vw, 48px);
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      line-height: 1.1;
+      margin-bottom: 16px;
+      color: var(--text);
+    }
+
+    .section-subtitle {
+      font-size: 17px;
+      color: var(--text-2);
+      line-height: 1.65;
+      max-width: 560px;
+    }
+
+    .section-header { margin-bottom: 56px; }
+    .section-header.center { text-align: center; }
+    .section-header.center .section-subtitle { margin: 0 auto; }
+
+    /* ============================================
+       HOW IT WORKS
+       ============================================ */
+    .how-it-works {
+      padding: 100px 0;
+    }
+
+    .steps-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+      gap: 2px;
+      background: var(--border);
+      border-radius: 20px;
+      overflow: hidden;
+    }
+
+    .step-card {
+      background: var(--card);
+      padding: 36px 30px;
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .step-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      opacity: 0;
+      transition: opacity 0.3s ease;
+    }
+
+    .step-card:hover { background: var(--card-2); }
+    .step-card:hover::before { opacity: 1; }
+
+    .step-number {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 44px;
+      height: 44px;
+      border-radius: 13px;
+      background: rgba(99,102,241,0.12);
+      border: 1px solid rgba(99,102,241,0.25);
+      font-size: 18px;
+      font-weight: 900;
+      color: var(--primary-l);
+      margin-bottom: 20px;
+    }
+
+    .step-icon {
+      font-size: 30px;
+      margin-bottom: 16px;
+      display: block;
+    }
+
+    .step-title {
+      font-size: 17px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 10px;
+      letter-spacing: -0.3px;
+    }
+
+    .step-desc {
+      font-size: 14px;
+      color: var(--text-2);
+      line-height: 1.65;
+    }
+
+    /* ============================================
+       FEATURES
+       ============================================ */
+    .features {
+      padding: 100px 0;
+    }
+
+    .features-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    .features-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 14px;
+    }
+
+    .feature-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 16px;
+      padding: 22px;
+      transition: all 0.25s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-card::after {
+      content: '';
+      position: absolute;
+      bottom: 0; right: 0;
+      width: 60px; height: 60px;
+      background: radial-gradient(circle, rgba(99,102,241,0.08), transparent 70%);
+      border-radius: 50%;
+    }
+
+    .feature-card:hover {
+      border-color: rgba(99,102,241,0.35);
+      box-shadow: 0 0 24px rgba(99,102,241,0.12);
+      transform: translateY(-2px);
+    }
+
+    .feature-icon-wrap {
+      width: 44px;
+      height: 44px;
+      border-radius: 12px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 22px;
+      margin-bottom: 14px;
+    }
+
+    .feature-icon-wrap.purple { background: rgba(99,102,241,0.12); }
+    .feature-icon-wrap.violet { background: rgba(139,92,246,0.12); }
+    .feature-icon-wrap.cyan   { background: rgba(6,182,212,0.12); }
+    .feature-icon-wrap.green  { background: rgba(16,185,129,0.12); }
+
+    .feature-title {
+      font-size: 14.5px;
+      font-weight: 700;
+      color: var(--text);
+      margin-bottom: 7px;
+      letter-spacing: -0.2px;
+    }
+
+    .feature-desc {
+      font-size: 13px;
+      color: var(--text-2);
+      line-height: 1.6;
+    }
+
+    /* Feature visual panel */
+    .feature-visual {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .feature-visual::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(99,102,241,0.5), rgba(139,92,246,0.5), transparent);
+    }
+
+    .phone-mockup {
+      background: var(--surface);
+      border: 1px solid var(--border-2);
+      border-radius: 20px;
+      padding: 20px;
+      max-width: 280px;
+      margin: 0 auto;
+      position: relative;
+    }
+
+    .phone-notch {
+      width: 60px; height: 8px;
+      background: var(--border-2);
+      border-radius: 999px;
+      margin: 0 auto 16px;
+    }
+
+    .msg-bubble {
+      border-radius: 14px;
+      padding: 12px 16px;
+      margin-bottom: 10px;
+      font-size: 13px;
+      line-height: 1.5;
+      animation: bubbleIn 0.4s ease both;
+    }
+
+    .msg-bubble.received {
+      background: rgba(99,102,241,0.12);
+      border: 1px solid rgba(99,102,241,0.2);
+      color: var(--text-2);
+      border-radius: 4px 14px 14px 14px;
+    }
+
+    .msg-bubble.whatsapp {
+      background: rgba(37,211,102,0.1);
+      border: 1px solid rgba(37,211,102,0.2);
+      color: #86efac;
+      border-radius: 4px 14px 14px 14px;
+    }
+
+    .msg-bubble-label {
+      font-size: 10px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.8px;
+      margin-bottom: 6px;
+      opacity: 0.7;
+    }
+
+    .option-chip {
+      display: inline-block;
+      background: rgba(99,102,241,0.15);
+      border: 1px solid rgba(99,102,241,0.3);
+      color: var(--primary-l);
+      font-size: 12px;
+      font-weight: 600;
+      padding: 4px 12px;
+      border-radius: 999px;
+      margin: 3px 2px;
+      cursor: pointer;
+      transition: all 0.2s ease;
+    }
+
+    .option-chip:hover, .option-chip.active {
+      background: rgba(99,102,241,0.3);
+      border-color: var(--primary);
+    }
+
+    .progress-mini {
+      height: 4px;
+      background: rgba(255,255,255,0.06);
+      border-radius: 999px;
+      margin: 16px 0 8px;
+      overflow: hidden;
+    }
+
+    .progress-mini-fill {
+      height: 100%;
+      border-radius: 999px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      width: 65%;
+      animation: progressGrow 2s 0.5s ease both;
+    }
+
+    @keyframes progressGrow {
+      from { width: 0; }
+      to   { width: 65%; }
+    }
+
+    /* ============================================
+       CHANNELS
+       ============================================ */
+    .channels {
+      padding: 100px 0;
+    }
+
+    .channels-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 24px;
+    }
+
+    .channel-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 40px 36px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+    }
+
+    .channel-card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      transition: opacity 0.3s ease;
+    }
+
+    .channel-card.whatsapp::before {
+      background: linear-gradient(90deg, #25d366, #128c7e);
+    }
+
+    .channel-card.email::before {
+      background: linear-gradient(90deg, var(--primary), var(--cyan));
+    }
+
+    .channel-card:hover {
+      border-color: var(--border-2);
+      transform: translateY(-4px);
+      box-shadow: 0 16px 48px rgba(0,0,0,0.4);
+    }
+
+    .channel-icon-lg {
+      font-size: 52px;
+      display: block;
+      margin-bottom: 20px;
+    }
+
+    .channel-title {
+      font-size: 26px;
+      font-weight: 800;
+      color: var(--text);
+      letter-spacing: -0.5px;
+      margin-bottom: 10px;
+    }
+
+    .channel-desc {
+      font-size: 15px;
+      color: var(--text-2);
+      line-height: 1.65;
+      margin-bottom: 24px;
+    }
+
+    .channel-tag {
+      display: inline-block;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--text-2);
+      margin: 3px 2px;
+    }
+
+    .channel-badge {
+      position: absolute;
+      top: 24px;
+      right: 24px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      padding: 4px 12px;
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    /* ============================================
+       RESULTS DEMO
+       ============================================ */
+    .results-demo {
+      padding: 100px 0;
+    }
+
+    .results-layout {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 48px;
+      align-items: center;
+    }
+
+    .results-panel {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 24px;
+      padding: 32px;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .results-panel::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(99,102,241,0.5), transparent);
+    }
+
+    .results-panel-title {
+      font-size: 13px;
+      font-weight: 700;
+      color: var(--text-3);
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      margin-bottom: 20px;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    .results-panel-title::before {
+      content: '';
+      display: inline-block;
+      width: 8px; height: 8px;
+      background: var(--green);
+      border-radius: 50%;
+      box-shadow: 0 0 8px var(--green);
+      animation: dotGlow2 2s ease-in-out infinite;
+    }
+
+    @keyframes dotGlow2 {
+      0%, 100% { box-shadow: 0 0 4px var(--green); }
+      50%       { box-shadow: 0 0 12px var(--green); }
+    }
+
+    .result-bar-item {
+      margin-bottom: 16px;
+    }
+
+    .result-bar-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 7px;
+      font-size: 13.5px;
+    }
+
+    .result-bar-name { color: var(--text-2); font-weight: 500; }
+    .result-bar-value { color: var(--text); font-weight: 800; font-size: 15px; }
+
+    .result-bar-track {
+      height: 8px;
+      background: rgba(255,255,255,0.05);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .result-bar-fill {
+      height: 100%;
+      border-radius: 999px;
+      animation: barGrow 1.2s ease both;
+    }
+
+    .result-bar-fill.bar-1 {
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+      animation-delay: 0.3s;
+    }
+    .result-bar-fill.bar-2 {
+      background: linear-gradient(90deg, var(--cyan), #0ea5e9);
+      animation-delay: 0.5s;
+    }
+    .result-bar-fill.bar-3 {
+      background: linear-gradient(90deg, #f59e0b, #f97316);
+      animation-delay: 0.7s;
+    }
+    .result-bar-fill.bar-4 {
+      background: linear-gradient(90deg, var(--green), #0d9488);
+      animation-delay: 0.9s;
+    }
+
+    @keyframes barGrow {
+      from { width: 0; }
+    }
+
+    .results-total {
+      margin-top: 20px;
+      padding-top: 20px;
+      border-top: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+    }
+
+    .results-total-label { font-size: 13px; color: var(--text-3); font-weight: 600; text-transform: uppercase; letter-spacing: 0.5px; }
+    .results-total-value { font-size: 22px; font-weight: 900; color: var(--text); letter-spacing: -0.5px; }
+
+    /* ============================================
+       PRICING
+       ============================================ */
+    .pricing {
+      padding: 100px 0;
+    }
+
+    .pricing-cards {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+      max-width: 960px;
+      margin: 0 auto;
+    }
+
+    .pricing-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 22px;
+      padding: 36px 28px;
+      position: relative;
+      overflow: hidden;
+      transition: all 0.3s ease;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .pricing-card:hover { border-color: var(--border-2); transform: translateY(-4px); }
+
+    .pricing-card.featured {
+      border-color: rgba(99,102,241,0.4);
+      background: linear-gradient(135deg, rgba(99,102,241,0.08), rgba(139,92,246,0.06));
+      box-shadow: 0 0 48px rgba(99,102,241,0.15);
+    }
+
+    .pricing-card.featured::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 2px;
+      background: linear-gradient(90deg, var(--primary), var(--accent));
+    }
+
+    .pricing-popular-badge {
+      position: absolute;
+      top: 20px;
+      right: 20px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      font-size: 10.5px;
+      font-weight: 800;
+      padding: 3px 10px;
+      border-radius: 999px;
+      text-transform: uppercase;
+      letter-spacing: 0.5px;
+    }
+
+    .pricing-tier {
+      font-size: 12px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 1px;
+      color: var(--text-3);
+      margin-bottom: 12px;
+    }
+
+    .pricing-card.featured .pricing-tier { color: var(--primary-l); }
+
+    .pricing-price {
+      margin-bottom: 6px;
+    }
+
+    .pricing-currency {
+      font-size: 20px;
+      font-weight: 700;
+      color: var(--text-2);
+      vertical-align: top;
+      margin-top: 8px;
+      display: inline-block;
+    }
+
+    .pricing-amount {
+      font-size: 48px;
+      font-weight: 900;
+      color: var(--text);
+      letter-spacing: -2px;
+      line-height: 1;
+    }
+
+    .pricing-period {
+      font-size: 13px;
+      color: var(--text-3);
+      font-weight: 500;
+    }
+
+    .pricing-desc {
+      font-size: 13.5px;
+      color: var(--text-2);
+      margin: 12px 0 24px;
+      line-height: 1.5;
+    }
+
+    .pricing-divider {
+      height: 1px;
+      background: var(--border);
+      margin-bottom: 24px;
+    }
+
+    .pricing-features {
+      list-style: none;
+      flex: 1;
+      margin-bottom: 28px;
+    }
+
+    .pricing-features li {
+      display: flex;
+      align-items: flex-start;
+      gap: 10px;
+      font-size: 13.5px;
+      color: var(--text-2);
+      margin-bottom: 12px;
+      line-height: 1.4;
+    }
+
+    .pricing-features li::before {
+      content: '';
+      display: inline-flex;
+      width: 18px;
+      height: 18px;
+      border-radius: 50%;
+      background: rgba(16,185,129,0.15);
+      border: 1px solid rgba(16,185,129,0.3);
+      flex-shrink: 0;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 14 12' fill='none' stroke='%2310b981' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='1,6 5,10 13,2'/%3E%3C/svg%3E");
+      background-size: 10px;
+      background-repeat: no-repeat;
+      background-position: center;
+      margin-top: 1px;
+    }
+
+    .pricing-btn {
+      display: block;
+      text-align: center;
+      padding: 13px;
+      border-radius: 12px;
+      font-size: 14px;
+      font-weight: 700;
+      text-decoration: none;
+      transition: all 0.2s ease;
+    }
+
+    .pricing-btn.outline {
+      border: 1.5px solid var(--border);
+      color: var(--text-2);
+      background: rgba(255,255,255,0.03);
+    }
+
+    .pricing-btn.outline:hover { border-color: var(--primary); color: var(--primary-l); }
+
+    .pricing-btn.filled {
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      box-shadow: 0 6px 24px rgba(99,102,241,0.3);
+    }
+
+    .pricing-btn.filled:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 10px 32px rgba(99,102,241,0.45);
+    }
+
+    /* ============================================
+       TESTIMONIALS
+       ============================================ */
+    .testimonials {
+      padding: 100px 0;
+    }
+
+    .testimonials-grid {
+      display: grid;
+      grid-template-columns: repeat(3, 1fr);
+      gap: 20px;
+    }
+
+    .testimonial-card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 28px;
+      transition: all 0.25s ease;
+      position: relative;
+    }
+
+    .testimonial-card:hover { border-color: var(--border-2); transform: translateY(-2px); }
+
+    .testimonial-quote {
+      font-size: 32px;
+      color: var(--primary);
+      line-height: 1;
+      margin-bottom: 14px;
+      opacity: 0.6;
+    }
+
+    .testimonial-text {
+      font-size: 14px;
+      color: var(--text-2);
+      line-height: 1.7;
+      margin-bottom: 20px;
+    }
+
+    .testimonial-author {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+    }
+
+    .testimonial-avatar {
+      width: 40px;
+      height: 40px;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 800;
+      font-size: 15px;
+      color: white;
+      flex-shrink: 0;
+    }
+
+    .testimonial-name {
+      font-size: 14px;
+      font-weight: 700;
+      color: var(--text);
+    }
+
+    .testimonial-role {
+      font-size: 12px;
+      color: var(--text-3);
+      margin-top: 2px;
+    }
+
+    .stars {
+      color: #f59e0b;
+      font-size: 13px;
+      margin-bottom: 12px;
+      letter-spacing: 2px;
+    }
+
+    /* ============================================
+       CTA FINAL
+       ============================================ */
+    .cta-section {
+      padding: 100px 0 120px;
+    }
+
+    .cta-box {
+      background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(139,92,246,0.08));
+      border: 1px solid rgba(99,102,241,0.3);
+      border-radius: 32px;
+      padding: 72px 48px;
+      text-align: center;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .cta-box::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, rgba(99,102,241,0.8), rgba(139,92,246,0.8), transparent);
+    }
+
+    .cta-box::after {
+      content: '';
+      position: absolute;
+      bottom: -60px; right: -60px;
+      width: 240px; height: 240px;
+      background: radial-gradient(circle, rgba(99,102,241,0.15), transparent 70%);
+      border-radius: 50%;
+    }
+
+    .cta-title {
+      font-size: clamp(28px, 5vw, 52px);
+      font-weight: 900;
+      letter-spacing: -1.5px;
+      color: var(--text);
+      margin-bottom: 16px;
+    }
+
+    .cta-subtitle {
+      font-size: 17px;
+      color: var(--text-2);
+      max-width: 500px;
+      margin: 0 auto 36px;
+      line-height: 1.6;
+    }
+
+    .cta-actions {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 14px;
+      flex-wrap: wrap;
+    }
+
+    .cta-contact-info {
+      margin-top: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 32px;
+      flex-wrap: wrap;
+    }
+
+    .cta-contact-item {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-size: 14px;
+      color: var(--text-3);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .cta-contact-item:hover { color: var(--text-2); }
+
+    .cta-contact-item-icon {
+      width: 32px;
+      height: 32px;
+      background: rgba(255,255,255,0.05);
+      border: 1px solid var(--border);
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+
+    /* ============================================
+       FOOTER
+       ============================================ */
+    .footer {
+      border-top: 1px solid var(--border);
+      padding: 40px 0;
+      position: relative;
+      z-index: 1;
+    }
+
+    .footer-inner {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 16px;
+    }
+
+    .footer-brand {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+      text-decoration: none;
+    }
+
+    .footer-brand-icon {
+      width: 32px; height: 32px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      border-radius: 9px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 15px;
+    }
+
+    .footer-brand-name {
+      font-size: 15px;
+      font-weight: 800;
+      color: var(--text-2);
+    }
+
+    .footer-copy {
+      font-size: 13px;
+      color: var(--text-3);
+    }
+
+    .footer-links {
+      display: flex;
+      gap: 20px;
+      list-style: none;
+    }
+
+    .footer-links a {
+      font-size: 13px;
+      color: var(--text-3);
+      text-decoration: none;
+      transition: color 0.2s ease;
+    }
+
+    .footer-links a:hover { color: var(--text-2); }
+
+    /* ============================================
+       ANIMATIONS
+       ============================================ */
+    @keyframes fadeInDown {
+      from { opacity: 0; transform: translateY(-12px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes fadeInUp {
+      from { opacity: 0; transform: translateY(16px); }
+      to   { opacity: 1; transform: translateY(0); }
+    }
+
+    @keyframes bubbleIn {
+      from { opacity: 0; transform: translateY(6px) scale(0.97); }
+      to   { opacity: 1; transform: translateY(0) scale(1); }
+    }
+
+    /* Scroll reveal */
+    .reveal {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.6s ease, transform 0.6s ease;
+    }
+
+    .reveal.visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .reveal-delay-1 { transition-delay: 0.1s; }
+    .reveal-delay-2 { transition-delay: 0.2s; }
+    .reveal-delay-3 { transition-delay: 0.3s; }
+    .reveal-delay-4 { transition-delay: 0.4s; }
+
+    /* ============================================
+       RESPONSIVE
+       ============================================ */
+    @media (max-width: 900px) {
+      .features-layout { grid-template-columns: 1fr; }
+      .features-grid { grid-template-columns: 1fr 1fr; }
+      .results-layout { grid-template-columns: 1fr; }
+      .channels-grid { grid-template-columns: 1fr; }
+      .pricing-cards { grid-template-columns: 1fr; max-width: 420px; }
+      .testimonials-grid { grid-template-columns: 1fr; }
+      .navbar-links { display: none; }
+      .cta-box { padding: 48px 24px; }
+      .hero-stats { flex-direction: column; border-radius: 16px; }
+      .hero-stat { border-right: none; border-bottom: 1px solid var(--border); }
+      .hero-stat:last-child { border-bottom: none; }
+    }
+
+    @media (max-width: 640px) {
+      .hero { padding: 100px 0 60px; }
+      .hero-title { font-size: 38px; }
+      .features-grid { grid-template-columns: 1fr; }
+      .footer-inner { flex-direction: column; text-align: center; }
+      .cta-contact-info { flex-direction: column; gap: 16px; }
+      .steps-grid { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- Animated Background -->
+<div class="bg-layer">
+  <div class="bg-grid"></div>
+  <div class="bg-orb bg-orb-1"></div>
+  <div class="bg-orb bg-orb-2"></div>
+  <div class="bg-orb bg-orb-3"></div>
+</div>
+
+<!-- ============ NAVBAR ============ -->
+<nav class="navbar" id="navbar">
+  <div class="navbar-inner">
+    <a href="/" class="navbar-brand">
+      <div class="navbar-logo-icon">🗳️</div>
+      <span class="navbar-brand-name">Tech Inteligente</span>
+    </a>
+
+    <ul class="navbar-links">
+      <li><a href="#como-funciona">Como funciona</a></li>
+      <li><a href="#recursos">Recursos</a></li>
+      <li><a href="#canais">Canais</a></li>
+      <li><a href="#planos">Planos</a></li>
+    </ul>
+
+    <div class="navbar-cta">
+      <a href="/admin" class="btn-nav-login">Entrar</a>
+      <a href="#contato" class="btn-nav-primary">Contratar →</a>
+    </div>
+  </div>
+</nav>
+
+<!-- ============ HERO ============ -->
+<section class="hero">
+  <div class="container">
+    <div class="hero-badge">
+      <div class="hero-badge-dot"></div>
+      Pesquisas eleitorais com tecnologia
+    </div>
+
+    <h1 class="hero-title">
+      <span class="hero-title-solid">Pesquisas que</span><br>
+      <span class="hero-title-gradient">falam a verdade</span>
+    </h1>
+
+    <p class="hero-subtitle">
+      Envie pesquisas eleitorais por <strong style="color:var(--text)">WhatsApp</strong> e <strong style="color:var(--text)">E-mail</strong>, colete respostas em tempo real e tome decisões com dados confiáveis — tudo em um painel intuitivo.
+    </p>
+
+    <div class="hero-actions">
+      <a href="#contato" class="btn-primary">
+        <svg width="18" height="18" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
+        Começar Agora
+      </a>
+      <a href="#como-funciona" class="btn-secondary">
+        Ver como funciona
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 5l7 7-7 7"/></svg>
+      </a>
+    </div>
+
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <div class="hero-stat-value">+10k</div>
+        <div class="hero-stat-label">Respostas coletadas</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value">98%</div>
+        <div class="hero-stat-label">Taxa de entrega</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value">2 canais</div>
+        <div class="hero-stat-label">WhatsApp + E-mail</div>
+      </div>
+      <div class="hero-stat">
+        <div class="hero-stat-value">Tempo real</div>
+        <div class="hero-stat-label">Dashboard ao vivo</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ HOW IT WORKS ============ -->
+<section class="how-it-works" id="como-funciona">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag reveal">Como funciona</div>
+      <h2 class="section-title reveal reveal-delay-1">Simples do início ao fim</h2>
+      <p class="section-subtitle reveal reveal-delay-2">Em menos de 10 minutos você cria, dispara e já começa a ver os resultados chegando.</p>
+    </div>
+
+    <div class="steps-grid reveal reveal-delay-1">
+      <div class="step-card">
+        <div class="step-number">1</div>
+        <div class="step-icon">📋</div>
+        <div class="step-title">Crie sua pesquisa</div>
+        <div class="step-desc">Monte perguntas de múltipla escolha, escolha única ou texto aberto no painel. Sem código, sem complicação.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-number">2</div>
+        <div class="step-icon">👥</div>
+        <div class="step-title">Importe seus contatos</div>
+        <div class="step-desc">Faça upload de uma planilha CSV com nome, e-mail e telefone. Pronto — sua lista está dentro do sistema.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-number">3</div>
+        <div class="step-icon">🚀</div>
+        <div class="step-title">Dispare pelo canal certo</div>
+        <div class="step-desc">Escolha WhatsApp ou E-mail, selecione os contatos e clique em disparar. O sistema cuida do envio automático.</div>
+      </div>
+      <div class="step-card">
+        <div class="step-number">4</div>
+        <div class="step-icon">📊</div>
+        <div class="step-title">Acompanhe ao vivo</div>
+        <div class="step-desc">Veja os resultados chegando em tempo real no painel de apuração, com gráficos e percentuais por candidato.</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FEATURES ============ -->
+<section class="features" id="recursos">
+  <div class="container">
+    <div class="features-layout">
+      <div>
+        <div class="section-header">
+          <div class="section-tag reveal">Recursos</div>
+          <h2 class="section-title reveal reveal-delay-1">Tudo que você precisa num só lugar</h2>
+          <p class="section-subtitle reveal reveal-delay-2">Desenvolvido especialmente para pesquisas eleitorais: do candidato ao instituto de pesquisa.</p>
+        </div>
+
+        <div class="features-grid reveal reveal-delay-3">
+          <div class="feature-card">
+            <div class="feature-icon-wrap purple">📱</div>
+            <div class="feature-title">WhatsApp Nativo</div>
+            <div class="feature-desc">Integração via Meta Cloud API. Mensagens com alto índice de abertura.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon-wrap cyan">📧</div>
+            <div class="feature-title">E-mail SMTP</div>
+            <div class="feature-desc">Configure seu próprio servidor. Controle total sobre entregabilidade.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon-wrap green">📊</div>
+            <div class="feature-title">Resultados Ao Vivo</div>
+            <div class="feature-desc">Dashboard atualizado em tempo real. Veja a evolução da pesquisa.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon-wrap violet">⬇️</div>
+            <div class="feature-title">Exportar CSV</div>
+            <div class="feature-desc">Baixe todos os dados para análise no Excel ou BI de sua preferência.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon-wrap purple">🔒</div>
+            <div class="feature-title">Link Único</div>
+            <div class="feature-desc">Cada eleitor recebe um token exclusivo. Impede resposta duplicada.</div>
+          </div>
+          <div class="feature-card">
+            <div class="feature-icon-wrap cyan">📁</div>
+            <div class="feature-title">Importação CSV</div>
+            <div class="feature-desc">Carregue listas de eleitores instantaneamente via planilha.</div>
+          </div>
+        </div>
+      </div>
+
+      <!-- Phone Mockup -->
+      <div class="feature-visual reveal reveal-delay-2">
+        <div style="text-align:center;margin-bottom:20px">
+          <span style="font-size:11px;font-weight:700;color:var(--text-3);text-transform:uppercase;letter-spacing:1px">Prévia — Pesquisa no WhatsApp</span>
+        </div>
+        <div class="phone-mockup">
+          <div class="phone-notch"></div>
+
+          <div class="msg-bubble whatsapp" style="animation-delay:0.2s">
+            <div class="msg-bubble-label" style="color:#86efac">🗳️ Tech Inteligente</div>
+            Olá, João! Você foi selecionado para nossa pesquisa eleitoral 2026. Leva menos de 2 min!
+          </div>
+
+          <div class="msg-bubble received" style="animation-delay:0.5s">
+            <div class="msg-bubble-label" style="color:var(--primary-l)">Pergunta 1 de 3</div>
+            Em quem você pretende votar para prefeito?
+            <div style="margin-top:10px">
+              <span class="option-chip active">Candidato A</span>
+              <span class="option-chip">Candidato B</span>
+              <span class="option-chip">Candidato C</span>
+              <span class="option-chip">Indeciso</span>
+            </div>
+          </div>
+
+          <div class="progress-mini">
+            <div class="progress-mini-fill"></div>
+          </div>
+          <div style="font-size:11px;color:var(--text-3);text-align:right">65% concluído</div>
+        </div>
+        <div style="margin-top:20px;padding:16px;background:rgba(255,255,255,0.02);border-radius:12px;border:1px solid var(--border)">
+          <div style="font-size:12px;color:var(--text-3);margin-bottom:8px;font-weight:600">✅ Experiência totalmente mobile-first</div>
+          <div style="font-size:12px;color:var(--text-3)">O eleitor responde diretamente pelo celular, sem instalar nada.</div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CHANNELS ============ -->
+<section class="channels" id="canais">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag reveal">Canais de Envio</div>
+      <h2 class="section-title reveal reveal-delay-1">Chegue onde o eleitor está</h2>
+      <p class="section-subtitle reveal reveal-delay-2">Dois canais poderosos para maximizar o alcance e a taxa de resposta das suas pesquisas.</p>
+    </div>
+
+    <div class="channels-grid reveal reveal-delay-2">
+      <div class="channel-card whatsapp">
+        <span class="channel-badge">Alta conversão</span>
+        <span class="channel-icon-lg">📱</span>
+        <h3 class="channel-title">WhatsApp</h3>
+        <p class="channel-desc">Integração direta com a <strong style="color:var(--text)">Meta Cloud API</strong>. Envie mensagens personalizadas com o nome do eleitor e um link único para resposta. Taxa de abertura superior a 85%.</p>
+        <div>
+          <span class="channel-tag">Meta Cloud API</span>
+          <span class="channel-tag">Link único por eleitor</span>
+          <span class="channel-tag">Resposta protegida</span>
+        </div>
+      </div>
+
+      <div class="channel-card email">
+        <span class="channel-badge">Profissional</span>
+        <span class="channel-icon-lg">📧</span>
+        <h3 class="channel-title">E-mail</h3>
+        <p class="channel-desc">Disparo via <strong style="color:var(--text)">SMTP configurável</strong>. Use seu próprio servidor ou integre com serviços como SendGrid, Mailgun ou Gmail. Controle total sobre entregabilidade.</p>
+        <div>
+          <span class="channel-tag">SMTP próprio</span>
+          <span class="channel-tag">HTML responsivo</span>
+          <span class="channel-tag">Rastreio de status</span>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ RESULTS DEMO ============ -->
+<section class="results-demo" id="resultados">
+  <div class="container">
+    <div class="results-layout">
+      <!-- Panel -->
+      <div class="results-panel reveal">
+        <div class="results-panel-title">Ao vivo — Apuração em tempo real</div>
+
+        <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:20px;">
+          Em quem você votaria para prefeito?
+        </div>
+
+        <div class="result-bar-item">
+          <div class="result-bar-header">
+            <span class="result-bar-name">Candidato A</span>
+            <span class="result-bar-value">42%</span>
+          </div>
+          <div class="result-bar-track">
+            <div class="result-bar-fill bar-1" style="width:42%"></div>
+          </div>
+        </div>
+
+        <div class="result-bar-item">
+          <div class="result-bar-header">
+            <span class="result-bar-name">Candidato B</span>
+            <span class="result-bar-value">28%</span>
+          </div>
+          <div class="result-bar-track">
+            <div class="result-bar-fill bar-2" style="width:28%"></div>
+          </div>
+        </div>
+
+        <div class="result-bar-item">
+          <div class="result-bar-header">
+            <span class="result-bar-name">Candidato C</span>
+            <span class="result-bar-value">18%</span>
+          </div>
+          <div class="result-bar-track">
+            <div class="result-bar-fill bar-3" style="width:18%"></div>
+          </div>
+        </div>
+
+        <div class="result-bar-item">
+          <div class="result-bar-header">
+            <span class="result-bar-name">Indeciso</span>
+            <span class="result-bar-value">12%</span>
+          </div>
+          <div class="result-bar-track">
+            <div class="result-bar-fill bar-4" style="width:12%"></div>
+          </div>
+        </div>
+
+        <div class="results-total">
+          <span class="results-total-label">Total de respostas</span>
+          <span class="results-total-value">1.847</span>
+        </div>
+      </div>
+
+      <div>
+        <div class="section-header reveal">
+          <div class="section-tag">Apuração</div>
+          <h2 class="section-title">Resultados que você entende de verdade</h2>
+          <p class="section-subtitle">Acompanhe percentuais, votos absolutos e taxa de resposta — tudo em um painel limpo e intuitivo.</p>
+        </div>
+
+        <div style="display:flex;flex-direction:column;gap:14px;" class="reveal reveal-delay-1">
+          <div style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:14px;">
+            <div style="width:40px;height:40px;background:rgba(99,102,241,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">📊</div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">Dashboard em tempo real</div>
+              <div style="font-size:13px;color:var(--text-3)">Os dados chegam automaticamente conforme os eleitores respondem</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:14px;">
+            <div style="width:40px;height:40px;background:rgba(16,185,129,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">⬇️</div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">Exportação em CSV</div>
+              <div style="font-size:13px;color:var(--text-3)">Leve os dados para Excel, Power BI ou qualquer ferramenta de análise</div>
+            </div>
+          </div>
+          <div style="display:flex;align-items:center;gap:14px;padding:16px;background:var(--card);border:1px solid var(--border);border-radius:14px;">
+            <div style="width:40px;height:40px;background:rgba(6,182,212,0.1);border-radius:10px;display:flex;align-items:center;justify-content:center;font-size:18px;flex-shrink:0;">🔍</div>
+            <div>
+              <div style="font-size:14px;font-weight:700;color:var(--text);margin-bottom:2px">Status por eleitor</div>
+              <div style="font-size:13px;color:var(--text-3)">Veja quem respondeu, quem não abriu e quem está pendente</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ PRICING ============ -->
+<section class="pricing" id="planos">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag reveal">Planos</div>
+      <h2 class="section-title reveal reveal-delay-1">Simples, transparente, sem surpresas</h2>
+      <p class="section-subtitle reveal reveal-delay-2">Escolha o plano que se encaixa no tamanho da sua operação.</p>
+    </div>
+
+    <div class="pricing-cards reveal reveal-delay-2">
+      <!-- Starter -->
+      <div class="pricing-card">
+        <div class="pricing-tier">Starter</div>
+        <div class="pricing-price">
+          <span class="pricing-currency">R$</span>
+          <span class="pricing-amount">297</span>
+        </div>
+        <div class="pricing-period">por mês</div>
+        <div class="pricing-desc">Para candidatos iniciantes e vereadores que querem começar a ouvir seus eleitores.</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li>Até 1.000 disparos/mês</li>
+          <li>1 pesquisa ativa</li>
+          <li>WhatsApp + E-mail</li>
+          <li>Dashboard de resultados</li>
+          <li>Exportação CSV</li>
+          <li>Suporte por e-mail</li>
+        </ul>
+        <a href="#contato" class="pricing-btn outline">Começar com Starter</a>
+      </div>
+
+      <!-- Pro (featured) -->
+      <div class="pricing-card featured">
+        <div class="pricing-popular-badge">Mais popular</div>
+        <div class="pricing-tier">Pro</div>
+        <div class="pricing-price">
+          <span class="pricing-currency">R$</span>
+          <span class="pricing-amount">697</span>
+        </div>
+        <div class="pricing-period">por mês</div>
+        <div class="pricing-desc">Ideal para prefeitos, deputados e coordenadores de campanha com operação maior.</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li>Até 10.000 disparos/mês</li>
+          <li>Pesquisas ilimitadas</li>
+          <li>WhatsApp + E-mail</li>
+          <li>Dashboard em tempo real</li>
+          <li>Exportação CSV avançada</li>
+          <li>Múltiplos usuários admin</li>
+          <li>Suporte prioritário</li>
+        </ul>
+        <a href="#contato" class="pricing-btn filled">Assinar Pro</a>
+      </div>
+
+      <!-- Enterprise -->
+      <div class="pricing-card">
+        <div class="pricing-tier">Enterprise</div>
+        <div class="pricing-price">
+          <span class="pricing-currency"></span>
+          <span class="pricing-amount" style="font-size:36px">Sob consulta</span>
+        </div>
+        <div class="pricing-period">&nbsp;</div>
+        <div class="pricing-desc">Para institutos de pesquisa, partidos e campanhas com grandes volumes e necessidades customizadas.</div>
+        <div class="pricing-divider"></div>
+        <ul class="pricing-features">
+          <li>Disparos ilimitados</li>
+          <li>White-label disponível</li>
+          <li>Integração via API</li>
+          <li>Infraestrutura dedicada</li>
+          <li>SLA garantido</li>
+          <li>Gerente de conta dedicado</li>
+        </ul>
+        <a href="#contato" class="pricing-btn outline">Falar com vendas</a>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ TESTIMONIALS ============ -->
+<section class="testimonials" id="depoimentos">
+  <div class="container">
+    <div class="section-header center">
+      <div class="section-tag reveal">Depoimentos</div>
+      <h2 class="section-title reveal reveal-delay-1">Quem usa, aprova</h2>
+    </div>
+
+    <div class="testimonials-grid">
+      <div class="testimonial-card reveal">
+        <div class="stars">★★★★★</div>
+        <div class="testimonial-quote">"</div>
+        <div class="testimonial-text">Usamos na campanha para vereador e o resultado foi surpreendente. Em 2 horas já tínhamos centenas de respostas no painel. Conseguimos ajustar nossa estratégia no meio da campanha com base nos dados.</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar" style="background:linear-gradient(135deg,#6366f1,#8b5cf6)">MR</div>
+          <div>
+            <div class="testimonial-name">Marcos Ribeiro</div>
+            <div class="testimonial-role">Coordenador de Campanha — Interior de SP</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card reveal reveal-delay-1">
+        <div class="stars">★★★★★</div>
+        <div class="testimonial-quote">"</div>
+        <div class="testimonial-text">A facilidade de importar a lista de contatos e disparar pelo WhatsApp foi um diferencial enorme. Nossa taxa de resposta foi 5x maior do que pesquisas tradicionais por telefone.</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar" style="background:linear-gradient(135deg,#06b6d4,#3b82f6)">AS</div>
+          <div>
+            <div class="testimonial-name">Ana Souza</div>
+            <div class="testimonial-role">Diretora de Pesquisa — Instituto Eleitoral</div>
+          </div>
+        </div>
+      </div>
+
+      <div class="testimonial-card reveal reveal-delay-2">
+        <div class="stars">★★★★★</div>
+        <div class="testimonial-quote">"</div>
+        <div class="testimonial-text">O painel de apuração em tempo real é simplesmente incrível. Conseguimos acompanhar a evolução das intenções de voto semana a semana e tomar decisões baseadas em dados reais.</div>
+        <div class="testimonial-author">
+          <div class="testimonial-avatar" style="background:linear-gradient(135deg,#10b981,#0d9488)">PC</div>
+          <div>
+            <div class="testimonial-name">Pedro Costa</div>
+            <div class="testimonial-role">Candidato a Deputado Estadual — MG</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ CTA ============ -->
+<section class="cta-section" id="contato">
+  <div class="container">
+    <div class="cta-box reveal">
+      <h2 class="cta-title">Pronto para começar?</h2>
+      <p class="cta-subtitle">Fale com nossa equipe e tenha sua primeira pesquisa rodando ainda esta semana.</p>
+
+      <div class="cta-actions">
+        <a href="https://wa.me/5500000000000?text=Olá! Tenho interesse na plataforma de pesquisas eleitorais da Tech Inteligente." target="_blank" class="btn-primary">
+          <svg width="18" height="18" viewBox="0 0 24 24" fill="currentColor"><path d="M17.472 14.382c-.297-.149-1.758-.867-2.03-.967-.273-.099-.471-.148-.67.15-.197.297-.767.966-.94 1.164-.173.199-.347.223-.644.075-.297-.15-1.255-.463-2.39-1.475-.883-.788-1.48-1.761-1.653-2.059-.173-.297-.018-.458.13-.606.134-.133.298-.347.446-.52.149-.174.198-.298.298-.497.099-.198.05-.371-.025-.52-.075-.149-.669-1.612-.916-2.207-.242-.579-.487-.5-.669-.51-.173-.008-.371-.01-.57-.01-.198 0-.52.074-.792.372-.272.297-1.04 1.016-1.04 2.479 0 1.462 1.065 2.875 1.213 3.074.149.198 2.096 3.2 5.077 4.487.709.306 1.262.489 1.694.625.712.227 1.36.195 1.871.118.571-.085 1.758-.719 2.006-1.413.248-.694.248-1.289.173-1.413-.074-.124-.272-.198-.57-.347m-5.421 7.403h-.004a9.87 9.87 0 01-5.031-1.378l-.361-.214-3.741.982.998-3.648-.235-.374a9.86 9.86 0 01-1.51-5.26c.001-5.45 4.436-9.884 9.888-9.884 2.64 0 5.122 1.03 6.988 2.898a9.825 9.825 0 012.893 6.994c-.003 5.45-4.437 9.884-9.885 9.884m8.413-18.297A11.815 11.815 0 0012.05 0C5.495 0 .16 5.335.157 11.892c0 2.096.547 4.142 1.588 5.945L.057 24l6.305-1.654a11.882 11.882 0 005.683 1.448h.005c6.554 0 11.89-5.335 11.893-11.893a11.821 11.821 0 00-3.48-8.413z"/></svg>
+          Falar no WhatsApp
+        </a>
+        <a href="mailto:contato@techinteligente.com.br" class="btn-secondary">
+          📧 Enviar e-mail
+        </a>
+      </div>
+
+      <div class="cta-contact-info">
+        <a href="https://wa.me/5500000000000" target="_blank" class="cta-contact-item">
+          <div class="cta-contact-item-icon">📱</div>
+          (00) 00000-0000
+        </a>
+        <a href="mailto:contato@techinteligente.com.br" class="cta-contact-item">
+          <div class="cta-contact-item-icon">📧</div>
+          contato@techinteligente.com.br
+        </a>
+        <div class="cta-contact-item">
+          <div class="cta-contact-item-icon">🕐</div>
+          Resposta em até 24h
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- ============ FOOTER ============ -->
+<footer class="footer">
+  <div class="container">
+    <div class="footer-inner">
+      <a href="/" class="footer-brand">
+        <div class="footer-brand-icon">🗳️</div>
+        <span class="footer-brand-name">Tech Inteligente</span>
+      </a>
+
+      <span class="footer-copy">© 2026 Tech Inteligente. Todos os direitos reservados.</span>
+
+      <ul class="footer-links">
+        <li><a href="/admin">Painel Admin</a></li>
+        <li><a href="mailto:contato@techinteligente.com.br">Contato</a></li>
+      </ul>
+    </div>
+  </div>
+</footer>
+
+<script>
+  // ===== NAVBAR SCROLL =====
+  const navbar = document.getElementById('navbar');
+  window.addEventListener('scroll', () => {
+    if (window.scrollY > 20) {
+      navbar.style.background = 'rgba(4, 7, 15, 0.95)';
+    } else {
+      navbar.style.background = 'rgba(4, 7, 15, 0.8)';
+    }
+  });
+
+  // ===== SMOOTH SCROLL =====
+  document.querySelectorAll('a[href^="#"]').forEach(anchor => {
+    anchor.addEventListener('click', e => {
+      const target = document.querySelector(anchor.getAttribute('href'));
+      if (target) {
+        e.preventDefault();
+        const offset = 80;
+        const top = target.getBoundingClientRect().top + window.scrollY - offset;
+        window.scrollTo({ top, behavior: 'smooth' });
+      }
+    });
+  });
+
+  // ===== SCROLL REVEAL =====
+  const revealObserver = new IntersectionObserver((entries) => {
+    entries.forEach(entry => {
+      if (entry.isIntersecting) {
+        entry.target.classList.add('visible');
+        revealObserver.unobserve(entry.target);
+      }
+    });
+  }, { threshold: 0.12, rootMargin: '0px 0px -40px 0px' });
+
+  document.querySelectorAll('.reveal').forEach(el => revealObserver.observe(el));
+
+  // ===== COUNTER ANIMATION (hero stats) =====
+  function animateCounter(el, target, suffix = '') {
+    let start = 0;
+    const duration = 1800;
+    const step = (timestamp) => {
+      if (!start) start = timestamp;
+      const progress = Math.min((timestamp - start) / duration, 1);
+      const ease = 1 - Math.pow(1 - progress, 3);
+      el.textContent = Math.floor(ease * target).toLocaleString('pt-BR') + suffix;
+      if (progress < 1) requestAnimationFrame(step);
+    };
+    requestAnimationFrame(step);
+  }
+
+  // Trigger when hero stats visible
+  const heroStats = document.querySelector('.hero-stats');
+  const statsObserver = new IntersectionObserver((entries) => {
+    if (entries[0].isIntersecting) {
+      statsObserver.disconnect();
+    }
+  }, { threshold: 0.5 });
+  if (heroStats) statsObserver.observe(heroStats);
+</script>
+</body>
+</html>
