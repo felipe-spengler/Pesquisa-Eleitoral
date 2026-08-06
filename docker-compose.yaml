@@ -19,6 +19,10 @@ services:
     restart: unless-stopped
     ports:
       - "4444:4444"
+    labels:
+      - "traefik.enable=true"
+      - "traefik.http.routers.app-router.rule=Host(`pesquisa.techinteligente.site`)"
+      - "traefik.http.services.app-service.loadbalancer.server.port=4444"
     environment:
       NODE_ENV: production
       PORT: 4444
