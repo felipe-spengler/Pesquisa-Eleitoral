@@ -13,8 +13,13 @@
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-logo">
-      <h1>🗳️ Pesquisa Eleitoral</h1>
-      <p>Painel Administrativo</p>
+      <div class="sidebar-logo-inner">
+        <div class="sidebar-logo-icon">🗳️</div>
+        <div>
+          <h1>Pesquisa Eleitoral</h1>
+          <p>Painel Administrativo</p>
+        </div>
+      </div>
     </div>
     <nav class="sidebar-nav">
       <p class="nav-section-title">Principal</p>
@@ -47,7 +52,8 @@
           <p>Administrador</p>
         </div>
       </div>
-      <button class="btn btn-secondary w-full mt-2" id="btn-logout" style="font-size:13px;padding:8px;">
+      <button class="btn btn-secondary w-full mt-2" id="btn-logout" style="font-size:12.5px;padding:9px;">
+        <svg style="width:14px;height:14px;flex-shrink:0" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"/></svg>
         Sair
       </button>
     </div>
@@ -60,7 +66,13 @@
         <div class="topbar-title" id="page-title">Visão Geral</div>
         <div class="topbar-subtitle" id="page-subtitle">Resumo do sistema de pesquisas</div>
       </div>
-      <div class="flex gap-2" id="topbar-actions"></div>
+      <div class="flex items-center gap-3">
+        <div class="topbar-status">
+          <div class="topbar-status-dot"></div>
+          Online
+        </div>
+        <div class="flex gap-2" id="topbar-actions"></div>
+      </div>
     </div>
     <div class="page-body" id="page-content">
       <!-- Conteúdo dinâmico carregado via JS -->

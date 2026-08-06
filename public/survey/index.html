@@ -13,7 +13,7 @@
   <!-- Loading State -->
   <div class="survey-wrapper" id="loading-screen">
     <div class="state-screen">
-      <div class="state-icon">⏳</div>
+      <div class="loading-spinner-large"></div>
       <h1 class="state-title">Carregando...</h1>
       <p class="state-message">Aguarde enquanto validamos seu acesso.</p>
     </div>
@@ -54,14 +54,16 @@
     <!-- Fixed Bottom Navigation -->
     <div class="survey-navigation">
       <button class="btn-nav btn-prev" id="btn-prev" onclick="prevQuestion()" disabled>
-        ◀ Voltar
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
+        Voltar
       </button>
       <button class="btn-nav btn-next" id="btn-next" onclick="nextQuestion()">
-        Avançar ▶
+        Avançar
+        <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
       </button>
       <button class="btn-nav btn-submit hidden" id="btn-submit" onclick="submitSurvey()">
-        <span id="submit-text">✅ Enviar Voto</span>
-        <div class="spinner hidden" id="submit-spinner" style="border-top-color:white;border-color:rgba(255,255,255,0.3)"></div>
+        <span id="submit-text">Enviar Voto</span>
+        <div class="spinner hidden" id="submit-spinner" style="border-top-color:white;border-color:rgba(255,255,255,0.2)"></div>
       </button>
     </div>
   </div>
@@ -69,7 +71,11 @@
   <!-- Answered State -->
   <div class="survey-wrapper hidden" id="answered-screen">
     <div class="state-screen">
-      <div class="success-check">✅</div>
+      <div class="success-check">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 20L16 28L32 12" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
       <h1 class="state-title">Obrigado pela Participação!</h1>
       <p class="state-message">Sua resposta já foi registrada com sucesso. Agradecemos sua contribuição para esta pesquisa.</p>
     </div>
@@ -78,7 +84,14 @@
   <!-- Not Found State -->
   <div class="survey-wrapper hidden" id="notfound-screen">
     <div class="state-screen">
-      <div class="state-icon">🔍</div>
+      <div class="state-icon">
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="28" cy="28" r="26" stroke="rgba(99,102,241,0.3)" stroke-width="2"/>
+          <circle cx="28" cy="28" r="18" stroke="rgba(99,102,241,0.5)" stroke-width="1.5"/>
+          <path d="M36 36L44 44" stroke="#6366f1" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="26" cy="26" r="10" stroke="#6366f1" stroke-width="2.5"/>
+        </svg>
+      </div>
       <h1 class="state-title">Pesquisa não encontrada</h1>
       <p class="state-message">O link que você acessou é inválido ou a pesquisa foi encerrada. Verifique o link e tente novamente.</p>
     </div>
@@ -87,7 +100,13 @@
   <!-- Error State -->
   <div class="survey-wrapper hidden" id="error-screen">
     <div class="state-screen">
-      <div class="state-icon">⚠️</div>
+      <div class="state-icon">
+        <svg width="56" height="56" viewBox="0 0 56 56" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <circle cx="28" cy="28" r="26" stroke="rgba(245,158,11,0.35)" stroke-width="2"/>
+          <path d="M28 16V30" stroke="#f59e0b" stroke-width="3" stroke-linecap="round"/>
+          <circle cx="28" cy="38" r="2.5" fill="#f59e0b"/>
+        </svg>
+      </div>
       <h1 class="state-title">Erro ao carregar</h1>
       <p class="state-message" id="error-screen-msg">Ocorreu um erro inesperado. Por favor, recarregue a página.</p>
     </div>
@@ -96,7 +115,11 @@
   <!-- Success After Submit -->
   <div class="survey-wrapper hidden" id="success-screen">
     <div class="state-screen">
-      <div class="success-check">🎉</div>
+      <div class="success-check">
+        <svg width="40" height="40" viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+          <path d="M8 20L16 28L32 12" stroke="#10b981" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+      </div>
       <h1 class="state-title">Resposta Registrada!</h1>
       <p class="state-message">Sua participação foi confirmada. Muito obrigado pela sua contribuição nesta pesquisa eleitoral!</p>
     </div>
