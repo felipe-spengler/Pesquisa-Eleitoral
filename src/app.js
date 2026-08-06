@@ -14,6 +14,9 @@ const dispatchRoutes = require('./routes/dispatch');
 
 const app = express();
 
+// Confia no proxy do Coolify (Traefik) para obter o IP correto do eleitor (necessário para o Rate Limiter)
+app.set('trust proxy', true);
+
 // =============================================
 // Segurança e Headers
 // =============================================
