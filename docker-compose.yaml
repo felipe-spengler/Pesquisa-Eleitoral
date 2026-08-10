@@ -27,7 +27,7 @@ services:
       NODE_ENV: production
       PORT: 4444
       APP_URL: ${APP_URL:-http://localhost:4444}
-      DATABASE_URL: postgresql://${POSTGRES_USER:-pesquisa_user}:${POSTGRES_PASSWORD:-senha_segura_troque}@postgres:5432/${POSTGRES_DB:-pesquisa_eleitoral}
+      DATABASE_URL: postgresql://${POSTGRES_USER}:${POSTGRES_PASSWORD}@pesquisa_postgres:5432/${POSTGRES_DB:-pesquisa_eleitoral}
       JWT_SECRET: ${JWT_SECRET:-troque_por_uma_string_muito_secreta}
       # WhatsApp Meta Cloud API
       META_WA_TOKEN: ${META_WA_TOKEN:-}
@@ -40,7 +40,7 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-noreply@pesquisa.com}
     depends_on:
-      postgres:
+      pesquisa_postgres:
         condition: service_healthy
     networks:
       - pesquisa_net
@@ -51,20 +51,20 @@ services:
   # --------------------------------------------------
   # PostgreSQL 16
   # --------------------------------------------------
-  postgres:
+  pesquisa_postgres:
     image: postgres:16-alpine
     container_name: pesquisa_postgres
     restart: unless-stopped
     environment:
       POSTGRES_DB: ${POSTGRES_DB:-pesquisa_eleitoral}
-      POSTGRES_USER: ${POSTGRES_USER:-pesquisa_user}
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-senha_segura_troque}
+      POSTGRES_USER: ${POSTGRES_USER}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD}
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
       - "127.0.0.1:5435:5432"  # Porta não-padrão, acessível apenas localmente
     healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-pesquisa_user} -d ${POSTGRES_DB:-pesquisa_eleitoral}"]
+      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER} -d ${POSTGRES_DB:-pesquisa_eleitoral}"]
       interval: 10s
       timeout: 5s
       retries: 5

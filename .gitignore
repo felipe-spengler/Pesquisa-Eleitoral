@@ -27,3 +27,4 @@ Thumbs.db
 # Dados de teste
 *.csv
 !.env.example
+.vps_key
