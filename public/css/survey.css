@@ -711,3 +711,8 @@ body::after {
   .survey-navigation { padding: 12px 16px; }
   .btn-prev { flex: 0 0 90px; max-width: 90px; }
 }
+
+.hidden {
+  display: none !important;
+}
+
