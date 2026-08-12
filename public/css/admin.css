@@ -670,6 +670,11 @@ select.form-control {
   padding-right: 36px;
 }
 
+select.form-control option {
+  background-color: var(--bg-card);
+  color: var(--text-primary);
+}
+
 textarea.form-control { min-height: 80px; resize: vertical; line-height: 1.6; }
 
 /* ==============================================

@@ -103,6 +103,17 @@ let surveys = [];
 let contacts = [];
 let currentSurvey = null;
 
+function escapeHtml(unsafe) {
+  if (unsafe === undefined || unsafe === null) return '';
+  return String(unsafe)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
+
 // =============================================
 // AUTH
 // =============================================
@@ -144,7 +155,7 @@ function toast(title, msg, type = 'info') {
   const icons = { success:'✅', error:'❌', warning:'⚠️', info:'ℹ️' };
   const el = document.createElement('div');
   el.className = `toast toast-${type}`;
-  el.innerHTML = `<span class="toast-icon">${icons[type]}</span><div><div class="toast-title">${title}</div><div class="toast-msg">${msg}</div></div>`;
+  el.innerHTML = `<span class="toast-icon">${icons[type]}</span><div><div class="toast-title">${escapeHtml(title)}</div><div class="toast-msg">${escapeHtml(msg)}</div></div>`;
   document.getElementById('toast-container').appendChild(el);
   requestAnimationFrame(() => el.classList.add('show'));
   setTimeout(() => {
@@ -224,6 +235,40 @@ async function renderOverview() {
 
   const activeSurveys = surveys.filter(s => s.is_active).length;
 
+  let surveysHtml = '';
+  if (surveys.length === 0) {
+    surveysHtml = `
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <h3>Nenhuma pesquisa criada</h3>
+        <p>Clique em "Pesquisas" no menu para criar sua primeira pesquisa.</p>
+      </div>
+    `;
+  } else {
+    const rows = surveys.slice(0,5).map(s => `
+      <tr>
+        <td style="font-weight:600;color:var(--text-primary)">${escapeHtml(s.title)}</td>
+        <td><span class="badge ${s.is_active ? 'badge-success' : 'badge-gray'}">${s.is_active ? '● Ativa' : '○ Inativa'}</span></td>
+        <td>${new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
+        <td>
+          <button class="btn btn-secondary btn-sm btn-edit-survey" data-id="${Number(s.id)}">Editar</button>
+          <button class="btn btn-secondary btn-sm btn-results-survey" style="margin-left:4px" data-id="${Number(s.id)}">Resultados</button>
+        </td>
+      </tr>
+    `).join('');
+
+    surveysHtml = `
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>Título</th><th>Status</th><th>Criada em</th><th>Ações</th></tr></thead>
+          <tbody>
+            ${rows}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   document.getElementById('page-content').innerHTML = `
     <div class="stats-grid">
       <div class="stat-card">
@@ -249,37 +294,27 @@ async function renderOverview() {
           <div class="card-title">Pesquisas Recentes</div>
           <div class="card-subtitle">Últimas pesquisas criadas</div>
         </div>
-        <button class="btn btn-primary btn-sm" onclick="setPage('surveys')">Ver todas</button>
+        <button class="btn btn-primary btn-sm btn-view-all-surveys" data-page="surveys">Ver todas</button>
       </div>
-      ${surveys.length === 0 ? `
-        <div class="empty-state">
-          <div class="icon">📋</div>
-          <h3>Nenhuma pesquisa criada</h3>
-          <p>Clique em "Pesquisas" no menu para criar sua primeira pesquisa.</p>
-        </div>
-      ` : `
-        <div class="table-wrapper">
-          <table>
-            <thead><tr><th>Título</th><th>Status</th><th>Criada em</th><th>Ações</th></tr></thead>
-            <tbody>
-              ${surveys.slice(0,5).map(s => `
-                <tr>
-                  <td style="font-weight:600;color:var(--text-primary)">${s.title}</td>
-                  <td><span class="badge ${s.is_active ? 'badge-success' : 'badge-gray'}">${s.is_active ? '● Ativa' : '○ Inativa'}</span></td>
-                  <td>${new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
-                  <td>
-                    <button class="btn btn-secondary btn-sm" onclick="editSurvey(${s.id})">Editar</button>
-                    <button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="viewResults(${s.id})">Resultados</button>
-                  </td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>
-      `}
+      ${surveysHtml}
     </div>
   `;
+
+  bindOverviewActions();
 }
+
+function bindOverviewActions() {
+  document.querySelectorAll('.btn-edit-survey').forEach(btn => {
+    btn.addEventListener('click', () => editSurvey(Number(btn.dataset.id)));
+  });
+  document.querySelectorAll('.btn-results-survey').forEach(btn => {
+    btn.addEventListener('click', () => viewResults(Number(btn.dataset.id)));
+  });
+  document.querySelectorAll('.btn-view-all-surveys').forEach(btn => {
+    btn.addEventListener('click', () => setPage(btn.dataset.page));
+  });
+}
+
 
 // ---- SURVEYS ----
 async function renderSurveys() {
@@ -290,24 +325,31 @@ async function renderSurveys() {
   btn.innerHTML = `<button class="btn btn-primary" id="btn-new-survey">+ Nova Pesquisa</button>`;
   document.getElementById('btn-new-survey').addEventListener('click', () => openNewSurveyModal());
 
+  let surveysHtml = '';
+  if (surveys.length === 0) {
+    surveysHtml = `
+      <div class="empty-state">
+        <div class="icon">📋</div>
+        <h3>Nenhuma pesquisa criada ainda</h3>
+        <p>Crie sua primeira pesquisa eleitoral clicando no botão acima.</p>
+      </div>
+    `;
+  } else {
+    surveysHtml = `
+      <div class="table-wrapper">
+        <table>
+          <thead><tr><th>ID</th><th>Título</th><th>Status</th><th>Criada em</th><th>Ações</th></tr></thead>
+          <tbody id="surveys-tbody">
+            ${surveys.map(s => surveyRow(s)).join('')}
+          </tbody>
+        </table>
+      </div>
+    `;
+  }
+
   document.getElementById('page-content').innerHTML = `
     <div class="card">
-      ${surveys.length === 0 ? `
-        <div class="empty-state">
-          <div class="icon">📋</div>
-          <h3>Nenhuma pesquisa criada ainda</h3>
-          <p>Crie sua primeira pesquisa eleitoral clicando no botão acima.</p>
-        </div>
-      ` : `
-        <div class="table-wrapper">
-          <table>
-            <thead><tr><th>ID</th><th>Título</th><th>Status</th><th>Criada em</th><th>Ações</th></tr></thead>
-            <tbody id="surveys-tbody">
-              ${surveys.map(s => surveyRow(s)).join('')}
-            </tbody>
-          </table>
-        </div>
-      `}
+      ${surveysHtml}
     </div>
   `;
 
@@ -315,22 +357,33 @@ async function renderSurveys() {
 }
 
 function surveyRow(s) {
+  const safeId = Number(s.id);
   return `
-    <tr id="survey-row-${s.id}">
-      <td style="color:var(--text-muted)">#${s.id}</td>
-      <td style="font-weight:600;color:var(--text-primary)">${s.title}</td>
+    <tr id="survey-row-${safeId}">
+      <td style="color:var(--text-muted)">#${safeId}</td>
+      <td style="font-weight:600;color:var(--text-primary)">${escapeHtml(s.title)}</td>
       <td><span class="badge ${s.is_active ? 'badge-success' : 'badge-gray'}">${s.is_active ? '● Ativa' : '○ Inativa'}</span></td>
       <td>${new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
       <td>
-        <button class="btn btn-secondary btn-sm" onclick="editSurvey(${s.id})">✏️ Editar</button>
-        <button class="btn btn-secondary btn-sm" style="margin-left:4px" onclick="viewResults(${s.id})">📊 Resultados</button>
-        <button class="btn btn-danger btn-sm" style="margin-left:4px" onclick="deleteSurvey(${s.id})">🗑️ Excluir</button>
+        <button class="btn btn-secondary btn-sm btn-survey-edit" data-id="${safeId}">✏️ Editar</button>
+        <button class="btn btn-secondary btn-sm btn-survey-results" style="margin-left:4px" data-id="${safeId}">📊 Resultados</button>
+        <button class="btn btn-danger btn-sm btn-survey-delete" style="margin-left:4px" data-id="${safeId}">🗑️ Excluir</button>
       </td>
     </tr>
   `;
 }
 
-function bindSurveyActions() {}
+function bindSurveyActions() {
+  document.querySelectorAll('.btn-survey-edit').forEach(btn => {
+    btn.addEventListener('click', () => editSurvey(Number(btn.dataset.id)));
+  });
+  document.querySelectorAll('.btn-survey-results').forEach(btn => {
+    btn.addEventListener('click', () => viewResults(Number(btn.dataset.id)));
+  });
+  document.querySelectorAll('.btn-survey-delete').forEach(btn => {
+    btn.addEventListener('click', () => deleteSurvey(Number(btn.dataset.id)));
+  });
+}
 
 function openNewSurveyModal() {
   openModal('Nova Pesquisa', `
@@ -389,7 +442,7 @@ function renderSurveyEditor(survey) {
     <div class="card mb-4">
       <div class="card-header">
         <div>
-          <div class="card-title">${survey.title}</div>
+          <div class="card-title">${escapeHtml(survey.title)}</div>
           <div class="card-subtitle">Status: <span class="badge ${survey.is_active ? 'badge-success' : 'badge-gray'}">${survey.is_active ? 'Ativa' : 'Inativa'}</span></div>
         </div>
         <button class="btn btn-secondary btn-sm" onclick="toggleSurveyStatus(${survey.id}, ${!survey.is_active})">
@@ -422,15 +475,16 @@ function renderQuestionCard(q, num) {
         </div>
         <button class="btn btn-danger btn-sm" onclick="deleteQuestion(${q.id})">Remover</button>
       </div>
-      <p style="font-weight:600;color:var(--text-primary);margin-bottom:${hasOptions ? '16px' : '0'}">${q.question_text}</p>
+      <p style="font-weight:600;color:var(--text-primary);margin-bottom:${hasOptions ? '16px' : '0'}">${escapeHtml(q.question_text)}</p>
       ${hasOptions ? `
         <div class="options-container" id="opts-${q.id}">
           ${q.options.map(o => `
             <div class="option-row" id="opt-row-${o.id}">
-              <span class="badge badge-gray" style="flex:1">○ ${o.option_text}</span>
+              <span class="badge badge-gray" style="flex:1">○ ${escapeHtml(o.option_text)}</span>
               <button class="btn btn-danger btn-sm" onclick="deleteOption(${o.id}, ${q.id})">✕</button>
             </div>
           `).join('')}
+
           <div class="option-row mt-2">
             <input type="text" class="form-control" id="new-opt-${q.id}" placeholder="Nova opção..." style="flex:1">
             <button class="btn btn-secondary btn-sm" onclick="addOption(${q.id})">+ Adicionar</button>
@@ -531,12 +585,15 @@ async function renderContacts() {
   contacts = data || [];
 
   document.getElementById('topbar-actions').innerHTML = `<button class="btn btn-primary" id="btn-import-csv">📁 Importar CSV</button>`;
-  document.getElementById('btn-import-csv').addEventListener('click', openImportModal);
+  document.getElementById('btn-import-csv').addEventListener('click', () => {
+    const fileInput = document.getElementById('csv-file');
+    if (fileInput) fileInput.click();
+  });
 
   document.getElementById('page-content').innerHTML = `
     <div class="card mb-4">
       <div class="card-title mb-4">📁 Importar Contatos via CSV</div>
-      <div class="file-drop-zone" id="drop-zone" onclick="document.getElementById('csv-file').click()">
+      <div class="file-drop-zone" id="drop-zone">
         <input type="file" id="csv-file" accept=".csv" class="hidden">
         <div class="upload-icon">📂</div>
         <p>Arraste e solte um arquivo <strong>.csv</strong> ou clique para selecionar</p>
@@ -558,10 +615,10 @@ async function renderContacts() {
             <tbody>
               ${contacts.slice(0,200).map(c => `
                 <tr>
-                  <td style="color:var(--text-muted)">#${c.id}</td>
-                  <td style="color:var(--text-primary);font-weight:500">${c.name || '—'}</td>
-                  <td>${c.email || '—'}</td>
-                  <td>${c.phone || '—'}</td>
+                  <td style="color:var(--text-muted)">#${Number(c.id)}</td>
+                  <td style="color:var(--text-primary);font-weight:500">${c.name ? escapeHtml(c.name) : '—'}</td>
+                  <td>${c.email ? escapeHtml(c.email) : '—'}</td>
+                  <td>${c.phone ? escapeHtml(c.phone) : '—'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -580,6 +637,8 @@ function setupCsvUpload() {
   const status = document.getElementById('import-status');
 
   if (!dropZone || !fileInput) return;
+
+  dropZone.addEventListener('click', () => fileInput.click());
 
   const handleFile = async (file) => {
     if (!file || !file.name.endsWith('.csv')) {
@@ -600,11 +659,12 @@ function setupCsvUpload() {
     const data = await res.json();
 
     if (res.ok) {
-      status.innerHTML = `<div class="badge badge-success" style="padding:10px 16px;font-size:14px">✅ ${data.message}</div>`;
+      status.innerHTML = `<div class="badge badge-success" style="padding:10px 16px;font-size:14px">✅ ${escapeHtml(data.message)}</div>`;
       toast('Importação concluída!', data.message, 'success');
       setTimeout(() => renderContacts(), 1500);
     } else {
-      status.innerHTML = `<div class="badge badge-danger" style="padding:10px 16px;font-size:14px">❌ ${data.error}</div>`;
+      status.innerHTML = `<div class="badge badge-danger" style="padding:10px 16px;font-size:14px">❌ ${escapeHtml(data.error)}</div>`;
+
       toast('Erro', data.error, 'error');
     }
   };
@@ -636,19 +696,19 @@ async function renderDispatch() {
           <label class="form-label">Pesquisa</label>
           <select class="form-control" id="dispatch-survey">
             <option value="">Selecione a pesquisa...</option>
-            ${surveys.map(s => `<option value="${s.id}">${s.title}</option>`).join('')}
+            ${surveys.map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('')}
           </select>
         </div>
 
         <div class="form-group">
           <label class="form-label">Canal de Envio</label>
           <div class="channel-grid">
-            <div class="channel-card" id="ch-whatsapp" onclick="selectChannel('whatsapp')">
+            <div class="channel-card" id="ch-whatsapp">
               <div class="channel-icon">📱</div>
               <div class="channel-name">WhatsApp</div>
               <div class="channel-desc">Via Meta Cloud API</div>
             </div>
-            <div class="channel-card" id="ch-email" onclick="selectChannel('email')">
+            <div class="channel-card" id="ch-email">
               <div class="channel-icon">📧</div>
               <div class="channel-name">E-mail</div>
               <div class="channel-desc">Via SMTP</div>
@@ -665,16 +725,16 @@ async function renderDispatch() {
               </label>
               ${contacts.map(c => `
                 <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-radius:4px;" class="contact-check-label" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''">
-                  <input type="checkbox" class="contact-checkbox" value="${c.id}">
-                  <span style="color:var(--text-primary);font-weight:500">${c.name || '—'}</span>
-                  <span style="color:var(--text-muted)">${c.email || c.phone || ''}</span>
+                  <input type="checkbox" class="contact-checkbox" value="${Number(c.id)}">
+                  <span style="color:var(--text-primary);font-weight:500">${c.name ? escapeHtml(c.name) : '—'}</span>
+                  <span style="color:var(--text-muted)">${c.email ? escapeHtml(c.email) : (c.phone ? escapeHtml(c.phone) : '')}</span>
                 </label>
               `).join('')}
             `}
           </div>
         </div>
 
-        <button class="btn btn-primary w-full btn-lg" id="btn-start-dispatch" onclick="startDispatch()">
+        <button class="btn btn-primary w-full btn-lg" id="btn-start-dispatch">
           🚀 Iniciar Disparo
         </button>
 
@@ -688,14 +748,15 @@ async function renderDispatch() {
         <div class="mt-4">
           <select class="form-control" id="status-survey-select">
             <option value="">Selecione a pesquisa...</option>
-            ${(sv||[]).map(s => `<option value="${s.id}">${s.title}</option>`).join('')}
+            ${(sv||[]).map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('')}
           </select>
-          <button class="btn btn-secondary w-full mt-2" onclick="checkDispatchStatus()">🔄 Verificar Status</button>
+          <button class="btn btn-secondary w-full mt-2" id="btn-check-dispatch-status">🔄 Verificar Status</button>
         </div>
         <div id="dispatch-status-result" class="mt-4"></div>
       </div>
     </div>
   `;
+
 
   // Select all logic
   const selectAll = document.getElementById('select-all-contacts');
@@ -703,6 +764,27 @@ async function renderDispatch() {
     selectAll.addEventListener('change', (e) => {
       document.querySelectorAll('.contact-checkbox').forEach(cb => cb.checked = e.target.checked);
     });
+  }
+
+  bindDispatchActions();
+}
+
+function bindDispatchActions() {
+  const chWhatsapp = document.getElementById('ch-whatsapp');
+  if (chWhatsapp) {
+    chWhatsapp.addEventListener('click', () => selectChannel('whatsapp'));
+  }
+  const chEmail = document.getElementById('ch-email');
+  if (chEmail) {
+    chEmail.addEventListener('click', () => selectChannel('email'));
+  }
+  const btnStart = document.getElementById('btn-start-dispatch');
+  if (btnStart) {
+    btnStart.addEventListener('click', () => startDispatch());
+  }
+  const btnCheck = document.getElementById('btn-check-dispatch-status');
+  if (btnCheck) {
+    btnCheck.addEventListener('click', () => checkDispatchStatus());
   }
 }
 
@@ -736,10 +818,10 @@ async function startDispatch() {
   resultEl.classList.remove('hidden');
 
   if (ok) {
-    resultEl.innerHTML = `<div class="badge badge-success" style="padding:12px 16px;font-size:14px;display:block">✅ ${data.message}</div>`;
+    resultEl.innerHTML = `<div class="badge badge-success" style="padding:12px 16px;font-size:14px;display:block">✅ ${escapeHtml(data.message)}</div>`;
     toast('Disparo iniciado!', data.message, 'success');
   } else {
-    resultEl.innerHTML = `<div class="badge badge-danger" style="padding:12px 16px;font-size:14px;display:block">❌ ${data.error}</div>`;
+    resultEl.innerHTML = `<div class="badge badge-danger" style="padding:12px 16px;font-size:14px;display:block">❌ ${escapeHtml(data.error)}</div>`;
     toast('Erro', data.error, 'error');
   }
 }
@@ -784,14 +866,27 @@ async function renderResults() {
       <div class="flex gap-3">
         <select class="form-control" id="results-survey-select" style="max-width:400px">
           <option value="">Selecione...</option>
-          ${surveys.map(s => `<option value="${s.id}">${s.title}</option>`).join('')}
+          ${surveys.map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('')}
         </select>
-        <button class="btn btn-primary" onclick="loadResults()">Ver Resultados</button>
-        <button class="btn btn-secondary" id="btn-export" style="display:none" onclick="exportResults()">⬇️ Exportar CSV</button>
+        <button class="btn btn-primary" id="btn-load-results">Ver Resultados</button>
+        <button class="btn btn-secondary" id="btn-export" style="display:none">⬇️ Exportar CSV</button>
       </div>
     </div>
     <div id="results-content"></div>
   `;
+
+  bindResultsActions();
+}
+
+function bindResultsActions() {
+  const btnLoad = document.getElementById('btn-load-results');
+  if (btnLoad) {
+    btnLoad.addEventListener('click', () => loadResults());
+  }
+  const btnExport = document.getElementById('btn-export');
+  if (btnExport) {
+    btnExport.addEventListener('click', () => exportResults());
+  }
 }
 
 let currentResultsSurveyId = null;
@@ -840,13 +935,13 @@ function renderQuestionResult(q) {
     return `
       <div class="card mb-4">
         <div class="card-header">
-          <div class="card-title">${q.question.question_text}</div>
+          <div class="card-title">${escapeHtml(q.question.question_text)}</div>
           <span class="badge badge-info">Texto Aberto</span>
         </div>
         ${q.answers.length === 0 ? '<p class="text-muted text-sm">Nenhuma resposta ainda.</p>' : `
           <div style="max-height:200px;overflow-y:auto">
             ${q.answers.map(a => `
-              <div style="padding:10px;background:var(--bg-surface);border-radius:8px;margin-bottom:8px;font-size:14px;color:var(--text-secondary)">"${a}"</div>
+              <div style="padding:10px;background:var(--bg-surface);border-radius:8px;margin-bottom:8px;font-size:14px;color:var(--text-secondary)">"${escapeHtml(a)}"</div>
             `).join('')}
           </div>
         `}
@@ -857,7 +952,7 @@ function renderQuestionResult(q) {
   return `
     <div class="card mb-4">
       <div class="card-header">
-        <div class="card-title">${q.question.question_text}</div>
+        <div class="card-title">${escapeHtml(q.question.question_text)}</div>
         <div style="display:flex;align-items:center;gap:8px">
           <span class="badge badge-info">${q.type === 'single_choice' ? 'Escolha Única' : 'Múltipla Escolha'}</span>
           <span class="text-muted text-sm">${q.total_votes} votos</span>
@@ -866,13 +961,14 @@ function renderQuestionResult(q) {
       ${q.options.map(o => `
         <div style="margin-bottom:14px">
           <div class="flex justify-between items-center mb-2">
-            <span style="font-size:14px;color:var(--text-secondary)">${o.option_text}</span>
+            <span style="font-size:14px;color:var(--text-secondary)">${escapeHtml(o.option_text)}</span>
             <span style="font-weight:700;color:var(--text-primary)">${o.votes} <span class="text-muted">(${o.percentage}%)</span></span>
           </div>
           <div class="progress-bar-wrap">
             <div class="progress-bar-fill" style="width:${o.percentage}%"></div>
           </div>
         </div>
+
       `).join('')}
     </div>
   `;
