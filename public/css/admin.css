@@ -1183,3 +1183,41 @@ tbody td {
   padding: 12px;
   border: 1px solid var(--border);
 }
+
+.sidebar-toggle {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .sidebar-toggle {
+    display: flex !important;
+  }
+  
+  .sidebar {
+    transform: translateX(-100%);
+    transition: transform 0.3s ease;
+    box-shadow: none;
+  }
+  
+  .sidebar.active {
+    transform: translateX(0);
+    box-shadow: 0 0 40px rgba(0,0,0,0.8);
+  }
+  
+  .main-content {
+    margin-left: 0 !important;
+    width: 100% !important;
+  }
+  
+  .topbar {
+    padding: 14px 20px;
+  }
+  
+  .page-body {
+    padding: 20px;
+  }
+  
+  .grid-2, .grid-3 {
+    grid-template-columns: 1fr !important;
+  }
+}
