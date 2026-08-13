@@ -237,6 +237,29 @@ router.get('/contacts', async (req, res) => {
   }
 });
 
+// Helper para verificar duplicidade por e-mail ou telefone dentro de uma lista
+async function isDuplicate(listId, phone, email) {
+  if (!listId) return false;
+  if (!phone && !email) return false;
+  
+  const conds = [];
+  const vals = [listId];
+  let placeholderIndex = 2;
+  
+  if (phone) {
+    conds.push(`phone = $${placeholderIndex++}`);
+    vals.push(phone);
+  }
+  if (email) {
+    conds.push(`email = $${placeholderIndex++}`);
+    vals.push(email);
+  }
+  
+  const q = `SELECT id FROM contacts WHERE list_id = $1 AND (${conds.join(' OR ')}) LIMIT 1`;
+  const res = await query(q, vals);
+  return res.rows.length > 0;
+}
+
 // POST /api/admin/contacts
 router.post('/contacts', async (req, res) => {
   try {
@@ -244,9 +267,13 @@ router.post('/contacts', async (req, res) => {
     if (!name && !email && !phone) {
       return res.status(400).json({ error: 'Nome, e-mail ou telefone deve ser preenchido.' });
     }
+    const listId = list_id ? parseInt(list_id) : null;
+    if (listId && await isDuplicate(listId, phone, email)) {
+      return res.status(400).json({ error: 'Um contato com este e-mail ou telefone já existe nesta lista.' });
+    }
     const result = await query(
       'INSERT INTO contacts (name, email, phone, list_id) VALUES ($1, $2, $3, $4) RETURNING *',
-      [name, email, phone, list_id ? parseInt(list_id) : null]
+      [name, email, phone, listId]
     );
     return res.status(201).json(result.rows[0]);
   } catch (err) {
@@ -264,15 +291,22 @@ router.post('/contacts/bulk', async (req, res) => {
     }
     const listId = list_id ? parseInt(list_id) : null;
     let imported = 0;
+    let skipped = 0;
     for (const c of contacts) {
       if (!c.name && !c.email && !c.phone) continue;
+      
+      if (listId && await isDuplicate(listId, c.phone, c.email)) {
+        skipped++;
+        continue;
+      }
+
       await query(
         'INSERT INTO contacts (name, email, phone, list_id) VALUES ($1, $2, $3, $4)',
         [c.name || null, c.email || null, c.phone || null, listId]
       );
       imported++;
     }
-    return res.json({ message: `${imported} contatos importados com sucesso!`, imported });
+    return res.json({ message: `${imported} contatos importados com sucesso! (${skipped} duplicados ignorados)`, imported, skipped });
   } catch (err) {
     console.error('[Admin] POST contacts/bulk:', err.message);
     return res.status(500).json({ error: 'Erro ao importar contatos.' });
@@ -330,6 +364,7 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
 
     let imported = 0;
     let errors = 0;
+    let skipped = 0;
 
     for (const row of records) {
       try {
@@ -338,6 +373,11 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
         const phone = row.telefone || row.phone || null;
 
         if (!name && !email && !phone) continue;
+
+        if (list_id && await isDuplicate(list_id, phone, email)) {
+          skipped++;
+          continue;
+        }
 
         await query(
           'INSERT INTO contacts (name, email, phone, list_id) VALUES ($1, $2, $3, $4)',
@@ -350,8 +390,9 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
     }
 
     return res.json({
-      message: `Importação concluída. ${imported} contatos importados, ${errors} erros.`,
+      message: `Importação concluída. ${imported} contatos importados, ${skipped} duplicados ignorados, ${errors} erros.`,
       imported,
+      skipped,
       errors,
     });
   } catch (err) {
