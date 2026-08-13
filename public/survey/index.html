@@ -247,17 +247,14 @@ function renderSurvey() {
   optionsArea.innerHTML = '';
 
   if (currentQuestion.type === 'text') {
-    optionsArea.innerHTML = `
-      <textarea
-        class="text-answer"
-        id="text-${currentQuestion.id}"
-        placeholder="Digite sua resposta aqui..."
-        rows="5"
-      ></textarea>
-    `;
-    const textarea = optionsArea.querySelector('.text-answer');
+    const textarea = document.createElement('textarea');
+    textarea.className = 'text-answer';
+    textarea.id = `text-${currentQuestion.id}`;
+    textarea.placeholder = 'Digite sua resposta aqui...';
+    textarea.rows = 5;
     textarea.value = answers[currentQuestion.id].text_answer;
     textarea.addEventListener('input', (e) => onTextChange(currentQuestion.id, e.target.value));
+    optionsArea.appendChild(textarea);
   } else {
     const inputType = currentQuestion.type === 'multiple_choice' ? 'checkbox' : 'radio';
     const optionClass = currentQuestion.type === 'multiple_choice' ? 'checkbox-type' : '';
@@ -267,27 +264,30 @@ function renderSurvey() {
     
     currentQuestion.options.forEach(o => {
       const isSelected = answers[currentQuestion.id].option_ids.includes(o.id);
-      const selectedClass = isSelected ? 'selected' : '';
-      
+
       const label = document.createElement('label');
-      label.className = `option-label ${optionClass} ${selectedClass}`;
+      label.className = `option-label ${optionClass}${isSelected ? ' selected' : ''}`;
       label.id = `opt-label-${o.id}`;
-      
-      label.innerHTML = `
-        <input type="${inputType}" 
-               name="q-${currentQuestion.id}" 
-               value="${o.id}" 
-               class="hidden" 
-               ${isSelected ? 'checked' : ''}>
-        <div class="option-check"></div>
-        <span class="option-text"></span>
-      `;
-      
-      label.querySelector('.option-text').textContent = o.option_text;
-      
-      const input = label.querySelector('input');
+
+      const input = document.createElement('input');
+      input.type = inputType;
+      input.name = `q-${currentQuestion.id}`;
+      input.value = o.id;
+      input.className = 'hidden';
+      input.checked = isSelected;
       input.addEventListener('change', () => handleOptionChange(currentQuestion.id, o.id, inputType));
-      
+
+      const checkDiv = document.createElement('div');
+      checkDiv.className = 'option-check';
+
+      const optSpan = document.createElement('span');
+      optSpan.className = 'option-text';
+      optSpan.textContent = o.option_text;
+
+      label.appendChild(input);
+      label.appendChild(checkDiv);
+      label.appendChild(optSpan);
+
       listWrapper.appendChild(label);
     });
     optionsArea.appendChild(listWrapper);
@@ -345,6 +345,8 @@ function prevQuestion() {
 function handleOptionChange(questionId, optionId, type) {
   const currentQuestion = surveyData.questions.find(q => q.id === questionId);
   if (!currentQuestion) return;
+  // Prototype Pollution guard: only write to keys that exist as known question IDs
+  if (!Object.prototype.hasOwnProperty.call(answers, questionId)) return;
 
   const labelEl = document.getElementById(`opt-label-${optionId}`);
 
@@ -354,10 +356,10 @@ function handleOptionChange(questionId, optionId, type) {
       const label = document.getElementById(`opt-label-${o.id}`);
       if (label) label.classList.remove('selected');
     });
-    
+
     answers[questionId].option_ids = [optionId];
     if (labelEl) labelEl.classList.add('selected');
-    
+
     // Auto-avançar em escolha única para melhor UX no mobile
     setTimeout(() => {
       if (currentQuestionIndex < surveyData.questions.length - 1) {
@@ -368,7 +370,7 @@ function handleOptionChange(questionId, optionId, type) {
   } else {
     // Múltipla escolha
     const index = answers[questionId].option_ids.indexOf(optionId);
-    
+
     if (index > -1) {
       // Remove se já estava selecionada
       answers[questionId].option_ids.splice(index, 1);
@@ -382,6 +384,8 @@ function handleOptionChange(questionId, optionId, type) {
 }
 
 function onTextChange(questionId, value) {
+  // Prototype Pollution guard: only write to keys that exist as known question IDs
+  if (!Object.prototype.hasOwnProperty.call(answers, questionId)) return;
   answers[questionId].text_answer = value;
 }
 

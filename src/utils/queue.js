@@ -46,7 +46,21 @@ async function processQueueBatch() {
     console.log(`[Queue] Processando lote de ${pendingRes.rows.length} disparo(s)...`);
 
     for (const job of pendingRes.rows) {
-      const surveyUrl = `${process.env.APP_URL || 'http://localhost:4444'}/survey/${job.token}`;
+      const rawUrl = `${process.env.APP_URL || 'http://localhost:4444'}/survey/${job.token}`;
+      // Validate URL scheme to prevent javascript: or data: injection into email HTML
+      let surveyUrl;
+      try {
+        const parsed = new URL(rawUrl);
+        if (!['http:', 'https:'].includes(parsed.protocol)) {
+          throw new Error(`Invalid URL scheme: ${parsed.protocol}`);
+        }
+        surveyUrl = parsed.href;
+      } catch (urlErr) {
+        console.error(`[Queue] ❌ URL inválida para job #${job.id}: ${urlErr.message}`);
+        await query(`UPDATE dispatch_tokens SET status = 'failed' WHERE id = $1`, [job.id]);
+        continue;
+      }
+
       
       try {
         if (job.channel === 'email') {

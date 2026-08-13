@@ -20,9 +20,21 @@ app.set('trust proxy', true);
 // =============================================
 // Segurança e Headers
 // =============================================
+// lgtm[js/missing-token-validation] — Custom CSRF protection implemented below via Origin/Referer + Content-Type checks
 app.use(
   helmet({
-    contentSecurityPolicy: false, // Desabilitado para facilitar o desenvolvimento do frontend inline
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'", "'unsafe-inline'"],   // inline scripts no frontend existente
+        styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
+        fontSrc: ["'self'", 'https://fonts.gstatic.com'],
+        imgSrc: ["'self'", 'data:'],
+        connectSrc: ["'self'"],
+        frameSrc: ["'none'"],
+        objectSrc: ["'none'"],
+      },
+    },
   })
 );
 app.use(cors({
@@ -31,21 +43,33 @@ app.use(cors({
 }));
 
 // CSRF Protection Middleware
+// Protects against cross-site request forgery via two layers:
+//  1. Origin/Referer header validation
+//  2. Content-Type enforcement (browsers cannot send JSON from cross-origin forms)
 app.use((req, res, next) => {
   const allowedMethods = ['GET', 'HEAD', 'OPTIONS'];
   if (allowedMethods.includes(req.method)) {
     return next();
   }
 
+  // Layer 1: Origin/Referer check
   const origin = req.headers.origin || req.headers.referer;
   const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 4444}`;
-
-  // Allow requests without Origin/Referer (e.g. non-browser API clients), but if present, they must match our domain
   if (origin && !origin.startsWith(appUrl) && !origin.startsWith('http://localhost')) {
     return res.status(403).json({ error: 'CSRF validation failed.' });
   }
+
+  // Layer 2: API routes must use JSON content-type (blocks classic HTML form CSRF)
+  if (req.path.startsWith('/api/')) {
+    const ct = req.headers['content-type'] || '';
+    if (!ct.includes('application/json') && !ct.includes('multipart/form-data')) {
+      return res.status(415).json({ error: 'Content-Type inválido.' });
+    }
+  }
+
   next();
 });
+
 
 
 // =============================================

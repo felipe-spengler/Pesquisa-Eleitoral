@@ -463,7 +463,7 @@ function renderSurveyEditor(survey) {
           <div class="card-title">${escapeHtml(survey.title)}</div>
           <div class="card-subtitle">Status: <span class="badge ${survey.is_active ? 'badge-success' : 'badge-gray'}">${survey.is_active ? 'Ativa' : 'Inativa'}</span></div>
         </div>
-        <button class="btn btn-secondary btn-sm" onclick="toggleSurveyStatus(${survey.id}, ${!survey.is_active})">
+        <button class="btn btn-secondary btn-sm" id="btn-toggle-survey-status">
           ${survey.is_active ? 'Desativar' : 'Ativar'}
         </button>
       </div>
@@ -479,6 +479,13 @@ function renderSurveyEditor(survey) {
       ` : survey.questions.map((q, i) => renderQuestionCard(q, i + 1)).join('')}
     </div>
   `;
+
+  const btnToggle = document.getElementById('btn-toggle-survey-status');
+  if (btnToggle) {
+    const surveyId = Number(survey.id);
+    const newStatus = !survey.is_active;
+    btnToggle.addEventListener('click', () => toggleSurveyStatus(surveyId, newStatus));
+  }
 }
 
 function renderQuestionCard(q, num) {
@@ -624,8 +631,8 @@ async function renderContacts() {
             <div class="nav-item ${selectedListId == l.id ? 'active' : ''}" style="margin:0; padding:8px 12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;" onclick="selectList(${l.id})">
               <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px;">📋 ${escapeHtml(l.name)}</span>
               <div style="display:flex; gap:6px;" onclick="event.stopPropagation();">
-                <span style="cursor:pointer; font-size:12px; opacity:0.7;" onclick="openRenameListModal(${l.id}, '${escapeHtml(l.name)}')">✏️</span>
-                <span style="cursor:pointer; font-size:12px; opacity:0.7;" onclick="confirmDeleteList(${l.id})">🗑️</span>
+                <span style="cursor:pointer; font-size:12px; opacity:0.7;" class="btn-rename-list" data-id="${Number(l.id)}" data-name="${escapeHtml(l.name)}">✏️</span>
+                <span style="cursor:pointer; font-size:12px; opacity:0.7;" onclick="confirmDeleteList(${Number(l.id)})">🗑️</span>
               </div>
             </div>
           `).join('')}
@@ -694,6 +701,11 @@ async function renderContacts() {
   if (selectedListId !== 'all') {
     setupCsvUpload();
   }
+
+  // Bind rename list buttons (data-attribute pattern avoids XSS via onclick attribute)
+  document.querySelectorAll('.btn-rename-list').forEach(btn => {
+    btn.addEventListener('click', () => openRenameListModal(Number(btn.dataset.id), btn.dataset.name));
+  });
 }
 
 function selectList(listId) {
@@ -1123,19 +1135,26 @@ async function checkDispatchStatus() {
   const statusColors = { pending:'badge-gray', sent:'badge-success', failed:'badge-danger', answered:'badge-info' };
   const statusLabels = { pending:'⏳ Pendente', sent:'✅ Enviado', failed:'❌ Falhou', answered:'🗳️ Respondido' };
 
-  const total = data.reduce((a, r) => a + parseInt(r.count), 0);
+  const total = data.reduce((a, r) => a + parseInt(r.count, 10), 0);
+  const safeStatusColors = { pending:'badge-gray', sent:'badge-success', failed:'badge-danger', answered:'badge-info' };
+  const safeStatusLabels = { pending:'⏳ Pendente', sent:'✅ Enviado', failed:'❌ Falhou', answered:'🗳️ Respondido' };
   el.innerHTML = `
     <div style="margin-top:8px">
       <p class="text-sm text-muted mb-4">Total de tokens: <strong style="color:var(--text-primary)">${total}</strong></p>
-      ${data.map(r => `
+      ${data.map(r => {
+        const safeStatus = String(r.status).replace(/[^a-z_]/g, '');
+        const safeCount = parseInt(r.count, 10) || 0;
+        const pct = total > 0 ? ((safeCount / total) * 100).toFixed(1) : 0;
+        return `
         <div class="flex justify-between items-center" style="margin-bottom:10px">
-          <span class="badge ${statusColors[r.status]||'badge-gray'}">${statusLabels[r.status]||r.status}</span>
-          <span style="font-weight:700;color:var(--text-primary)">${r.count}</span>
+          <span class="badge ${safeStatusColors[safeStatus]||'badge-gray'}">${safeStatusLabels[safeStatus]||escapeHtml(safeStatus)}</span>
+          <span style="font-weight:700;color:var(--text-primary)">${safeCount}</span>
         </div>
         <div class="progress-bar-wrap mb-2">
-          <div class="progress-bar-fill" style="width:${total>0?((r.count/total)*100).toFixed(1):0}%"></div>
+          <div class="progress-bar-fill" style="width:${pct}%"></div>
         </div>
-      `).join('')}
+        `;
+      }).join('')}
     </div>
   `;
 }

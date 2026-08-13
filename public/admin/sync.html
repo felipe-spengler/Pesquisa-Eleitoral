@@ -146,9 +146,15 @@
       const data = await res.json();
       const currentList = data.find(l => l.id == listId);
       if (currentList) {
-        document.getElementById('target-list').innerHTML = `📍 Lista: <strong>${currentList.name}</strong>`;
+        const targetEl = document.getElementById('target-list');
+        targetEl.textContent = '';
+        const prefix = document.createTextNode('📍 Lista: ');
+        const strong = document.createElement('strong');
+        strong.textContent = currentList.name;
+        targetEl.appendChild(prefix);
+        targetEl.appendChild(strong);
       } else {
-        document.getElementById('target-list').innerText = 'Lista destino não encontrada';
+        document.getElementById('target-list').textContent = 'Lista destino não encontrada';
       }
     } catch (e) {
       document.getElementById('target-list').innerText = 'Erro ao conectar';
