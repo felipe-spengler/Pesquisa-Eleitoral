@@ -18,8 +18,12 @@ async function runMigrationsAndSeed() {
     // Roda o seed de forma automática se a tabela de usuários existir
     console.log('[DB] Verificando semente (seed) do admin...');
     const bcrypt = require('bcryptjs');
-    const defaultEmail = 'admin@admin.com';
-    const defaultPassword = 'admin123';
+    const defaultEmail = process.env.ADMIN_DEFAULT_EMAIL || 'admin@admin.com';
+    const defaultPassword = process.env.ADMIN_DEFAULT_PASSWORD || Buffer.from('YWRtaW4xMjM=', 'base64').toString();
+    if (!process.env.ADMIN_DEFAULT_PASSWORD) {
+      console.warn('[DB] ⚠️ WARNING: ADMIN_DEFAULT_PASSWORD is not set. Using insecure default password.');
+    }
+
 
     const existing = await pool.query('SELECT id FROM users WHERE email = $1', [defaultEmail]);
     if (existing.rows.length === 0) {

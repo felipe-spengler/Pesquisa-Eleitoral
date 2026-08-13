@@ -3,6 +3,17 @@ const { query } = require('../config/db');
 const { sendSurveyEmail } = require('./mailer');
 const { sendWhatsAppTemplate } = require('./whatsapp');
 
+function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[&<>"']/g, m => ({
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    '"': '&quot;',
+    "'": '&#039;'
+  }[m]));
+}
+
 let isProcessing = false;
 const BATCH_SIZE = 10; // Processa de 10 em 10 por vez
 const CHECK_INTERVAL = 10000; // A cada 10 segundos
@@ -42,8 +53,8 @@ async function processQueueBatch() {
           if (job.email) {
             await sendSurveyEmail({
               to: job.email,
-              name: job.name,
-              surveyTitle: job.survey_title,
+              name: escapeHtml(job.name),
+              surveyTitle: escapeHtml(job.survey_title),
               surveyUrl,
             });
           } else {

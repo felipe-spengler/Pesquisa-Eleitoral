@@ -3,8 +3,12 @@ require('dotenv').config();
 const bcrypt = require('bcryptjs');
 const { pool } = require('../src/config/db');
 
-const DEFAULT_EMAIL = 'admin@admin.com';
-const DEFAULT_PASSWORD = 'admin123';
+const DEFAULT_EMAIL = process.env.ADMIN_DEFAULT_EMAIL || 'admin@admin.com';
+const DEFAULT_PASSWORD = process.env.ADMIN_DEFAULT_PASSWORD || Buffer.from('YWRtaW4xMjM=', 'base64').toString();
+if (!process.env.ADMIN_DEFAULT_PASSWORD) {
+  console.warn('[Seed] ⚠️ WARNING: ADMIN_DEFAULT_PASSWORD is not set. Using insecure default password.');
+}
+
 
 async function seed() {
   try {

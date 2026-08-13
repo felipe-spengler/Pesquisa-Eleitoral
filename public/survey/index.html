@@ -206,13 +206,23 @@ async function loadSurvey() {
   }
 }
 
+function escapeHtml(unsafe) {
+  if (unsafe === undefined || unsafe === null) return '';
+  return String(unsafe)
+    .replace(/&/g, "&amp;")
+    .replace(/</g, "&lt;")
+    .replace(/>/g, "&gt;")
+    .replace(/"/g, "&quot;")
+    .replace(/'/g, "&#039;");
+}
+
 // =============================================
 // RENDER SURVEY (WIZARD MODE)
 // =============================================
 function renderSurvey() {
   if (!surveyData || surveyData.questions.length === 0) return;
 
-  document.title = `${surveyData.survey.title} — Pesquisa Eleitoral`;
+  document.title = `${escapeHtml(surveyData.survey.title)} — Pesquisa Eleitoral`;
   document.getElementById('survey-title').textContent = surveyData.survey.title;
 
   const currentQuestion = surveyData.questions[currentQuestionIndex];
@@ -225,10 +235,12 @@ function renderSurvey() {
   const headerArea = document.getElementById('question-header-area');
   headerArea.innerHTML = `
     <div class="question-card">
-      <div class="question-number">Pergunta ${currentQuestionIndex + 1} de ${totalQuestions}</div>
-      <p class="question-text">${currentQuestion.question_text}</p>
+      <div class="question-number"></div>
+      <p class="question-text"></p>
     </div>
   `;
+  headerArea.querySelector('.question-number').textContent = `Pergunta ${currentQuestionIndex + 1} de ${totalQuestions}`;
+  headerArea.querySelector('.question-text').textContent = currentQuestion.question_text;
 
   // 3. Renderizar opções de resposta (Área Rolável)
   const optionsArea = document.getElementById('options-scroll-area');
@@ -240,10 +252,12 @@ function renderSurvey() {
         class="text-answer"
         id="text-${currentQuestion.id}"
         placeholder="Digite sua resposta aqui..."
-        oninput="onTextChange(${currentQuestion.id}, this.value)"
         rows="5"
-      >${answers[currentQuestion.id].text_answer}</textarea>
+      ></textarea>
     `;
+    const textarea = optionsArea.querySelector('.text-answer');
+    textarea.value = answers[currentQuestion.id].text_answer;
+    textarea.addEventListener('input', (e) => onTextChange(currentQuestion.id, e.target.value));
   } else {
     const inputType = currentQuestion.type === 'multiple_choice' ? 'checkbox' : 'radio';
     const optionClass = currentQuestion.type === 'multiple_choice' ? 'checkbox-type' : '';
@@ -255,18 +269,26 @@ function renderSurvey() {
       const isSelected = answers[currentQuestion.id].option_ids.includes(o.id);
       const selectedClass = isSelected ? 'selected' : '';
       
-      listWrapper.innerHTML += `
-        <label class="option-label ${optionClass} ${selectedClass}" id="opt-label-${o.id}">
-          <input type="${inputType}" 
-                 name="q-${currentQuestion.id}" 
-                 value="${o.id}" 
-                 class="hidden" 
-                 ${isSelected ? 'checked' : ''}
-                 onchange="handleOptionChange(${currentQuestion.id}, ${o.id}, '${inputType}')">
-          <div class="option-check"></div>
-          <span class="option-text">${o.option_text}</span>
-        </label>
+      const label = document.createElement('label');
+      label.className = `option-label ${optionClass} ${selectedClass}`;
+      label.id = `opt-label-${o.id}`;
+      
+      label.innerHTML = `
+        <input type="${inputType}" 
+               name="q-${currentQuestion.id}" 
+               value="${o.id}" 
+               class="hidden" 
+               ${isSelected ? 'checked' : ''}>
+        <div class="option-check"></div>
+        <span class="option-text"></span>
       `;
+      
+      label.querySelector('.option-text').textContent = o.option_text;
+      
+      const input = label.querySelector('input');
+      input.addEventListener('change', () => handleOptionChange(currentQuestion.id, o.id, inputType));
+      
+      listWrapper.appendChild(label);
     });
     optionsArea.appendChild(listWrapper);
   }
