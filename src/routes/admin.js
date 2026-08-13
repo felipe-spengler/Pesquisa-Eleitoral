@@ -62,13 +62,14 @@ router.get('/surveys/:id', async (req, res) => {
 router.post('/surveys', async (req, res) => {
   try {
     const { title, is_active = true } = req.body;
-    if (!title || title.trim() === '') {
-      return res.status(400).json({ error: 'Título é obrigatório.' });
+    if (typeof title !== 'string' || title.trim() === '') {
+      return res.status(400).json({ error: 'Título é obrigatório e deve ser uma string.' });
     }
     const result = await query(
       'INSERT INTO surveys (title, is_active) VALUES ($1, $2) RETURNING *',
       [title.trim(), is_active]
     );
+
     return res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('[Admin] POST surveys:', err.message);
@@ -189,13 +190,14 @@ router.post('/questions/:questionId/options', async (req, res) => {
   try {
     const { questionId } = req.params;
     const { option_text } = req.body;
-    if (!option_text || option_text.trim() === '') {
-      return res.status(400).json({ error: 'option_text é obrigatório.' });
+    if (typeof option_text !== 'string' || option_text.trim() === '') {
+      return res.status(400).json({ error: 'option_text é obrigatório e deve ser uma string.' });
     }
     const result = await query(
       'INSERT INTO options (question_id, option_text) VALUES ($1, $2) RETURNING *',
       [questionId, option_text.trim()]
     );
+
     return res.status(201).json(result.rows[0]);
   } catch (err) {
     console.error('[Admin] POST options:', err.message);
@@ -222,10 +224,87 @@ router.delete('/options/:id', async (req, res) => {
 // GET /api/admin/contacts
 router.get('/contacts', async (req, res) => {
   try {
-    const result = await query('SELECT * FROM contacts ORDER BY id DESC LIMIT 500');
+    const { list_id } = req.query;
+    let result;
+    if (list_id && list_id !== 'all') {
+      result = await query('SELECT * FROM contacts WHERE list_id = $1 ORDER BY id DESC LIMIT 1000', [list_id]);
+    } else {
+      result = await query('SELECT * FROM contacts ORDER BY id DESC LIMIT 1000');
+    }
     return res.json(result.rows);
   } catch (err) {
     return res.status(500).json({ error: 'Erro ao listar contatos.' });
+  }
+});
+
+// POST /api/admin/contacts
+router.post('/contacts', async (req, res) => {
+  try {
+    const { name, email, phone, list_id } = req.body;
+    if (!name && !email && !phone) {
+      return res.status(400).json({ error: 'Nome, e-mail ou telefone deve ser preenchido.' });
+    }
+    const result = await query(
+      'INSERT INTO contacts (name, email, phone, list_id) VALUES ($1, $2, $3, $4) RETURNING *',
+      [name, email, phone, list_id ? parseInt(list_id) : null]
+    );
+    return res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('[Admin] POST contacts:', err.message);
+    return res.status(500).json({ error: 'Erro ao criar contato.' });
+  }
+});
+
+// POST /api/admin/contacts/bulk
+router.post('/contacts/bulk', async (req, res) => {
+  try {
+    const { contacts, list_id } = req.body;
+    if (!Array.isArray(contacts) || contacts.length === 0) {
+      return res.status(400).json({ error: 'Nenhum contato enviado.' });
+    }
+    const listId = list_id ? parseInt(list_id) : null;
+    let imported = 0;
+    for (const c of contacts) {
+      if (!c.name && !c.email && !c.phone) continue;
+      await query(
+        'INSERT INTO contacts (name, email, phone, list_id) VALUES ($1, $2, $3, $4)',
+        [c.name || null, c.email || null, c.phone || null, listId]
+      );
+      imported++;
+    }
+    return res.json({ message: `${imported} contatos importados com sucesso!`, imported });
+  } catch (err) {
+    console.error('[Admin] POST contacts/bulk:', err.message);
+    return res.status(500).json({ error: 'Erro ao importar contatos.' });
+  }
+});
+
+// PUT /api/admin/contacts/:id
+router.put('/contacts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name, email, phone, list_id } = req.body;
+    const result = await query(
+      'UPDATE contacts SET name = COALESCE($1, name), email = COALESCE($2, email), phone = COALESCE($3, phone), list_id = COALESCE($4, list_id) WHERE id = $5 RETURNING *',
+      [name, email, phone, list_id ? parseInt(list_id) : null, id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Contato não encontrado.' });
+    return res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[Admin] PUT contacts/:id:', err.message);
+    return res.status(500).json({ error: 'Erro ao atualizar contato.' });
+  }
+});
+
+// DELETE /api/admin/contacts/:id
+router.delete('/contacts/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM contacts WHERE id = $1', [id]);
+    return res.json({ message: 'Contato excluído.' });
+  } catch (err) {
+    console.error('[Admin] DELETE contacts/:id:', err.message);
+    return res.status(500).json({ error: 'Erro ao excluir contato.' });
   }
 });
 
@@ -236,6 +315,7 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
       return res.status(400).json({ error: 'Arquivo CSV não enviado.' });
     }
 
+    const list_id = req.body.list_id ? parseInt(req.body.list_id) : null;
     const csvContent = req.file.buffer.toString('utf-8');
     const records = await new Promise((resolve, reject) => {
       parse(csvContent, {
@@ -260,8 +340,8 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
         if (!name && !email && !phone) continue;
 
         await query(
-          'INSERT INTO contacts (name, email, phone) VALUES ($1, $2, $3)',
-          [name, email, phone]
+          'INSERT INTO contacts (name, email, phone, list_id) VALUES ($1, $2, $3, $4)',
+          [name, email, phone, list_id]
         );
         imported++;
       } catch (e) {
@@ -277,6 +357,71 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
   } catch (err) {
     console.error('[Admin] CSV import:', err.message);
     return res.status(500).json({ error: `Erro ao processar CSV: ${err.message}` });
+  }
+});
+
+// =============================================
+// CONTACT LISTS
+// =============================================
+
+// GET /api/admin/lists
+router.get('/lists', async (req, res) => {
+  try {
+    const result = await query('SELECT * FROM contact_lists ORDER BY name ASC');
+    return res.json(result.rows);
+  } catch (err) {
+    console.error('[Admin] GET lists:', err.message);
+    return res.status(500).json({ error: 'Erro ao listar listas de contatos.' });
+  }
+});
+
+// POST /api/admin/lists
+router.post('/lists', async (req, res) => {
+  try {
+    const { name } = req.body;
+    if (typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ error: 'Nome da lista é obrigatório.' });
+    }
+    const result = await query(
+      'INSERT INTO contact_lists (name) VALUES ($1) RETURNING *',
+      [name.trim()]
+    );
+    return res.status(201).json(result.rows[0]);
+  } catch (err) {
+    console.error('[Admin] POST lists:', err.message);
+    return res.status(500).json({ error: 'Erro ao criar lista de contatos.' });
+  }
+});
+
+// PUT /api/admin/lists/:id
+router.put('/lists/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { name } = req.body;
+    if (typeof name !== 'string' || name.trim() === '') {
+      return res.status(400).json({ error: 'Nome da lista é obrigatório.' });
+    }
+    const result = await query(
+      'UPDATE contact_lists SET name = $1 WHERE id = $2 RETURNING *',
+      [name.trim(), id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Lista não encontrada.' });
+    return res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[Admin] PUT lists/:id:', err.message);
+    return res.status(500).json({ error: 'Erro ao atualizar lista de contatos.' });
+  }
+});
+
+// DELETE /api/admin/lists/:id
+router.delete('/lists/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    await query('DELETE FROM contact_lists WHERE id = $1', [id]);
+    return res.json({ message: 'Lista excluída com sucesso.' });
+  } catch (err) {
+    console.error('[Admin] DELETE lists/:id:', err.message);
+    return res.status(500).json({ error: 'Erro ao excluir lista de contatos.' });
   }
 });
 

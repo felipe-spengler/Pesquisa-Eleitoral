@@ -106,6 +106,8 @@
 let currentPage = 'overview';
 let surveys = [];
 let contacts = [];
+let contactLists = [];
+let selectedListId = 'all';
 let currentSurvey = null;
 
 function escapeHtml(unsafe) {
@@ -596,55 +598,288 @@ async function deleteSurvey(id) {
 }
 
 // ---- CONTACTS ----
+// ---- CONTACTS ----
 async function renderContacts() {
-  const { data } = await api('/api/admin/contacts');
-  contacts = data || [];
+  const { data: listsData } = await api('/api/admin/lists');
+  contactLists = listsData || [];
 
-  document.getElementById('topbar-actions').innerHTML = `<button class="btn btn-primary" id="btn-import-csv">📁 Importar CSV</button>`;
-  document.getElementById('btn-import-csv').addEventListener('click', () => {
-    const fileInput = document.getElementById('csv-file');
-    if (fileInput) fileInput.click();
-  });
+  const { data: contactsData } = await api(`/api/admin/contacts${selectedListId !== 'all' ? `?list_id=${selectedListId}` : ''}`);
+  contacts = contactsData || [];
+
+  document.getElementById('topbar-actions').innerHTML = ``;
 
   document.getElementById('page-content').innerHTML = `
-    <div class="card mb-4">
-      <div class="card-title mb-4">📁 Importar Contatos via CSV</div>
-      <div class="file-drop-zone" id="drop-zone">
-        <input type="file" id="csv-file" accept=".csv" class="hidden">
-        <div class="upload-icon">📂</div>
-        <p>Arraste e solte um arquivo <strong>.csv</strong> ou clique para selecionar</p>
-        <p class="text-xs mt-2" style="color:var(--text-muted)">Colunas esperadas: <strong>nome, email, telefone</strong></p>
-      </div>
-      <div id="import-status" class="mt-4 hidden"></div>
-    </div>
-
-    <div class="card">
-      <div class="card-header">
-        <div class="card-title">👥 Contatos Cadastrados (${contacts.length})</div>
-      </div>
-      ${contacts.length === 0 ? `
-        <div class="empty-state"><div class="icon">👥</div><h3>Nenhum contato</h3><p>Importe um CSV para começar.</p></div>
-      ` : `
-        <div class="table-wrapper">
-          <table>
-            <thead><tr><th>ID</th><th>Nome</th><th>E-mail</th><th>Telefone</th></tr></thead>
-            <tbody>
-              ${contacts.slice(0,200).map(c => `
-                <tr>
-                  <td style="color:var(--text-muted)">#${Number(c.id)}</td>
-                  <td style="color:var(--text-primary);font-weight:500">${c.name ? escapeHtml(c.name) : '—'}</td>
-                  <td>${c.email ? escapeHtml(c.email) : '—'}</td>
-                  <td>${c.phone ? escapeHtml(c.phone) : '—'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
+    <div class="grid-lists">
+      <!-- List Sidebar (Left Column) -->
+      <div class="card" style="padding: 16px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+          <h3 class="card-title">📁 Listas</h3>
+          <button class="btn btn-primary btn-sm" onclick="openCreateListModal()">+ Criar</button>
         </div>
-      `}
+        <div style="display:flex; flex-direction:column; gap:6px;">
+          <div class="nav-item ${selectedListId === 'all' ? 'active' : ''}" style="margin:0; padding:8px 12px; border-radius:8px;" onclick="selectList('all')">
+            📂 Todos os Contatos
+          </div>
+          ${contactLists.map(l => `
+            <div class="nav-item ${selectedListId == l.id ? 'active' : ''}" style="margin:0; padding:8px 12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;" onclick="selectList(${l.id})">
+              <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px;">📋 ${escapeHtml(l.name)}</span>
+              <div style="display:flex; gap:6px;" onclick="event.stopPropagation();">
+                <span style="cursor:pointer; font-size:12px; opacity:0.7;" onclick="openRenameListModal(${l.id}, '${escapeHtml(l.name)}')">✏️</span>
+                <span style="cursor:pointer; font-size:12px; opacity:0.7;" onclick="confirmDeleteList(${l.id})">🗑️</span>
+              </div>
+            </div>
+          `).join('')}
+        </div>
+      </div>
+
+      <!-- Main Panel (Right Column) -->
+      <div>
+        <!-- Import CSV Card (only if a specific list is selected) -->
+        ${selectedListId === 'all' ? `
+          <div class="card mb-4" style="text-align:center; padding: 24px;">
+            <p class="text-muted">Selecione uma lista específica ao lado para poder importar CSV, gerenciar contatos ou fazer a sincronização via celular.</p>
+          </div>
+        ` : `
+          <div class="card mb-4">
+            <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+              <div class="card-title">📁 Importar CSV para a Lista</div>
+              <button class="btn btn-secondary btn-sm" onclick="openSyncMobileModal()">📱 Sincronizar Celular</button>
+            </div>
+            <div class="file-drop-zone" id="drop-zone">
+              <input type="file" id="csv-file" accept=".csv" class="hidden">
+              <div class="upload-icon">📂</div>
+              <p>Arraste e solte um arquivo <strong>.csv</strong> ou clique para selecionar</p>
+              <p class="text-xs mt-2" style="color:var(--text-muted)">Colunas esperadas: <strong>nome, email, telefone</strong></p>
+            </div>
+            <div id="import-status" class="mt-4 hidden"></div>
+          </div>
+        `}
+
+        <!-- Contacts Table Card -->
+        <div class="card">
+          <div class="card-header">
+            <div class="card-title">👥 Contatos Cadastrados (${contacts.length})</div>
+            ${selectedListId !== 'all' ? `<button class="btn btn-primary btn-sm" onclick="openCreateContactModal()">👤 Novo Contato</button>` : ''}
+          </div>
+          ${contacts.length === 0 ? `
+            <div class="empty-state"><div class="icon">👥</div><h3>Nenhum contato encontrado</h3><p>Cadastre manualmente ou importe um arquivo CSV.</p></div>
+          ` : `
+            <div class="table-wrapper">
+              <table>
+                <thead><tr><th>ID</th><th>Nome</th><th>E-mail</th><th>Telefone</th><th style="width:100px;text-align:right">Ações</th></tr></thead>
+                <tbody>
+                  ${contacts.slice(0,500).map(c => `
+                    <tr>
+                      <td style="color:var(--text-muted)">#${Number(c.id)}</td>
+                      <td style="color:var(--text-primary);font-weight:500">${c.name ? escapeHtml(c.name) : '—'}</td>
+                      <td>${c.email ? escapeHtml(c.email) : '—'}</td>
+                      <td>${c.phone ? escapeHtml(c.phone) : '—'}</td>
+                      <td style="text-align:right;">
+                        <div style="display:flex; gap:8px; justify-content:flex-end;">
+                          <button class="btn btn-secondary btn-sm" style="padding:4px 8px;" onclick="openEditContactModal(${c.id}, '${escapeHtml(c.name || '')}', '${escapeHtml(c.email || '')}', '${escapeHtml(c.phone || '')}')">✏️</button>
+                          <button class="btn btn-danger btn-sm" style="padding:4px 8px;" onclick="confirmDeleteContact(${c.id})">🗑️</button>
+                        </div>
+                      </td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          `}
+        </div>
+      </div>
     </div>
   `;
 
-  setupCsvUpload();
+  if (selectedListId !== 'all') {
+    setupCsvUpload();
+  }
+}
+
+function selectList(listId) {
+  selectedListId = listId;
+  renderContacts();
+}
+
+// ---- CONTACT LISTS CRUD MODALS & ACTIONS ----
+function openCreateListModal() {
+  openModal('Criar Nova Lista', `
+    <form id="create-list-form">
+      <div class="form-group">
+        <label class="form-label">Nome da Lista</label>
+        <input type="text" class="form-control" id="list-name" placeholder="Ex: Contatos Toledo 2026" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-full mt-4">Criar Lista</button>
+    </form>
+  `);
+
+  document.getElementById('create-list-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('list-name').value.trim();
+    if (!name) return;
+
+    const { ok, data } = await api('/api/admin/lists', { method: 'POST', body: { name } });
+    if (ok) {
+      toast('Sucesso!', 'Lista criada com sucesso.', 'success');
+      closeModal();
+      selectedListId = data.id;
+      renderContacts();
+    } else {
+      toast('Erro', data.error || 'Falha ao criar lista.', 'error');
+    }
+  });
+}
+
+function openRenameListModal(id, currentName) {
+  openModal('Renomear Lista', `
+    <form id="rename-list-form">
+      <div class="form-group">
+        <label class="form-label">Nome da Lista</label>
+        <input type="text" class="form-control" id="list-name" value="${currentName}" required>
+      </div>
+      <button type="submit" class="btn btn-primary w-full mt-4">Atualizar Nome</button>
+    </form>
+  `);
+
+  document.getElementById('rename-list-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('list-name').value.trim();
+    if (!name) return;
+
+    const { ok, data } = await api(`/api/admin/lists/${id}`, { method: 'PUT', body: { name } });
+    if (ok) {
+      toast('Sucesso!', 'Lista renomeada.', 'success');
+      closeModal();
+      renderContacts();
+    } else {
+      toast('Erro', data.error || 'Falha ao renomear lista.', 'error');
+    }
+  });
+}
+
+async function confirmDeleteList(id) {
+  if (!confirm('Excluir esta lista e TODOS os contatos dela? Esta ação é irreversível.')) return;
+  const { ok, data } = await api(`/api/admin/lists/${id}`, { method: 'DELETE' });
+  if (ok) {
+    toast('Removida', 'Lista excluída com sucesso.', 'success');
+    if (selectedListId == id) selectedListId = 'all';
+    renderContacts();
+  } else {
+    toast('Erro', data.error || 'Falha ao excluir lista.', 'error');
+  }
+}
+
+// ---- CONTACTS CRUD MODALS & ACTIONS ----
+function openCreateContactModal() {
+  openModal('Adicionar Novo Contato', `
+    <form id="create-contact-form">
+      <div class="form-group">
+        <label class="form-label">Nome</label>
+        <input type="text" class="form-control" id="c-name" placeholder="Nome do eleitor" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail</label>
+        <input type="email" class="form-control" id="c-email" placeholder="email@exemplo.com">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Telefone (com DDD e DDI)</label>
+        <input type="tel" class="form-control" id="c-phone" placeholder="Ex: +5545999998888">
+      </div>
+      <button type="submit" class="btn btn-primary w-full mt-4">Salvar Contato</button>
+    </form>
+  `);
+
+  document.getElementById('create-contact-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('c-name').value.trim();
+    const email = document.getElementById('c-email').value.trim();
+    const phone = document.getElementById('c-phone').value.trim();
+
+    const { ok, data } = await api('/api/admin/contacts', {
+      method: 'POST',
+      body: { name, email, phone, list_id: selectedListId }
+    });
+
+    if (ok) {
+      toast('Sucesso!', 'Contato adicionado.', 'success');
+      closeModal();
+      renderContacts();
+    } else {
+      toast('Erro', data.error || 'Falha ao criar contato.', 'error');
+    }
+  });
+}
+
+function openEditContactModal(id, name, email, phone) {
+  openModal('Editar Contato', `
+    <form id="edit-contact-form">
+      <div class="form-group">
+        <label class="form-label">Nome</label>
+        <input type="text" class="form-control" id="c-name" value="${name}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">E-mail</label>
+        <input type="email" class="form-control" id="c-email" value="${email}">
+      </div>
+      <div class="form-group">
+        <label class="form-label">Telefone</label>
+        <input type="tel" class="form-control" id="c-phone" value="${phone}">
+      </div>
+      <button type="submit" class="btn btn-primary w-full mt-4">Atualizar Contato</button>
+    </form>
+  `);
+
+  document.getElementById('edit-contact-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const name = document.getElementById('c-name').value.trim();
+    const email = document.getElementById('c-email').value.trim();
+    const phone = document.getElementById('c-phone').value.trim();
+
+    const { ok, data } = await api(`/api/admin/contacts/${id}`, {
+      method: 'PUT',
+      body: { name, email, phone, list_id: selectedListId }
+    });
+
+    if (ok) {
+      toast('Sucesso!', 'Contato atualizado.', 'success');
+      closeModal();
+      renderContacts();
+    } else {
+      toast('Erro', data.error || 'Falha ao atualizar contato.', 'error');
+    }
+  });
+}
+
+async function confirmDeleteContact(id) {
+  if (!confirm('Deseja excluir este contato?')) return;
+  const { ok, data } = await api(`/api/admin/contacts/${id}`, { method: 'DELETE' });
+  if (ok) {
+    toast('Excluído', 'Contato removido.', 'success');
+    renderContacts();
+  } else {
+    toast('Erro', data.error || 'Falha ao excluir contato.', 'error');
+  }
+}
+
+function openSyncMobileModal() {
+  const baseUrl = window.location.origin;
+  const syncUrl = `${baseUrl}/admin/sync?token=${token}&list_id=${selectedListId}`;
+  const qrUrl = `https://api.qrserver.com/v1/create-qr-code/?size=220x220&data=${encodeURIComponent(syncUrl)}`;
+
+  openModal('Sincronizar Contatos via Celular', `
+    <div style="text-align:center; padding:10px 0;">
+      <p style="margin-bottom:18px; font-size:14px; color:var(--text-secondary);">
+        Escaneie o QR Code abaixo com a câmera do seu celular para abrir a agenda de contatos e importá-los diretamente para esta lista:
+      </p>
+      <div style="background:white; display:inline-block; padding:12px; border-radius:12px; margin-bottom:16px;">
+        <img src="${qrUrl}" alt="QR Code de Sincronização" style="display:block; width:220px; height:220px;">
+      </div>
+      <p style="font-size:12px; color:var(--text-muted); line-height:1.5;">
+        ⚠️ Certifique-se de que seu celular está conectado à internet.<br>
+        Suporta Android e iOS (Safari/Chrome).
+      </p>
+    </div>
+  `);
 }
 
 function setupCsvUpload() {
@@ -666,6 +901,9 @@ function setupCsvUpload() {
 
     const formData = new FormData();
     formData.append('file', file);
+    if (selectedListId && selectedListId !== 'all') {
+      formData.append('list_id', selectedListId);
+    }
 
     const res = await fetch('/api/admin/contacts/import', {
       method: 'POST',
@@ -698,8 +936,10 @@ function setupCsvUpload() {
 // ---- DISPATCH ----
 async function renderDispatch() {
   const { data: sv } = await api('/api/admin/surveys');
+  const { data: listsData } = await api('/api/admin/lists');
   const { data: ct } = await api('/api/admin/contacts');
   surveys = (sv || []).filter(s => s.is_active);
+  const lists = listsData || [];
   contacts = ct || [];
 
   document.getElementById('page-content').innerHTML = `
@@ -713,6 +953,14 @@ async function renderDispatch() {
           <select class="form-control" id="dispatch-survey">
             <option value="">Selecione a pesquisa...</option>
             ${surveys.map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('')}
+          </select>
+        </div>
+
+        <div class="form-group">
+          <label class="form-label">Filtrar por Lista</label>
+          <select class="form-control" id="dispatch-list-select" onchange="filterDispatchContacts(this.value)">
+            <option value="all">Todas as Listas</option>
+            ${lists.map(l => `<option value="${l.id}">${escapeHtml(l.name)}</option>`).join('')}
           </select>
         </div>
 
@@ -733,11 +981,11 @@ async function renderDispatch() {
         </div>
 
         <div class="form-group">
-          <label class="form-label">Contatos (${contacts.length} disponíveis)</label>
+          <label class="form-label" id="contacts-count-label">Contatos (${contacts.length} disponíveis)</label>
           <div style="max-height:200px;overflow-y:auto;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px" id="contacts-list">
             ${contacts.length === 0 ? '<p class="text-muted text-sm" style="padding:8px">Nenhum contato. Importe um CSV primeiro.</p>' : `
               <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);margin-bottom:4px">
-                <input type="checkbox" id="select-all-contacts"> Selecionar todos (${contacts.length})
+                <input type="checkbox" id="select-all-contacts" onchange="toggleSelectAllContacts(this.checked)"> Selecionar todos (${contacts.length})
               </label>
               ${contacts.map(c => `
                 <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-radius:4px;" class="contact-check-label" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''">
@@ -773,16 +1021,39 @@ async function renderDispatch() {
     </div>
   `;
 
-
-  // Select all logic
-  const selectAll = document.getElementById('select-all-contacts');
-  if (selectAll) {
-    selectAll.addEventListener('change', (e) => {
-      document.querySelectorAll('.contact-checkbox').forEach(cb => cb.checked = e.target.checked);
-    });
-  }
-
   bindDispatchActions();
+}
+
+async function filterDispatchContacts(listId) {
+  const { data: ct } = await api(`/api/admin/contacts${listId !== 'all' ? `?list_id=${listId}` : ''}`);
+  const contactsListEl = document.getElementById('contacts-list');
+  const contactsLabelEl = document.getElementById('contacts-count-label');
+  const filteredContacts = ct || [];
+
+  contactsLabelEl.textContent = `Contatos (${filteredContacts.length} disponíveis)`;
+
+  if (filteredContacts.length === 0) {
+    contactsListEl.innerHTML = '<p class="text-muted text-sm" style="padding:8px">Nenhum contato nesta lista.</p>';
+  } else {
+    contactsListEl.innerHTML = `
+      <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);margin-bottom:4px">
+        <input type="checkbox" id="select-all-contacts" onchange="toggleSelectAllContacts(this.checked)"> Selecionar todos (${filteredContacts.length})
+      </label>
+      ${filteredContacts.map(c => `
+        <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-radius:4px;" class="contact-check-label" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''">
+          <input type="checkbox" class="contact-checkbox" value="${Number(c.id)}">
+          <span style="color:var(--text-primary);font-weight:500">${c.name ? escapeHtml(c.name) : '—'}</span>
+          <span style="color:var(--text-muted)">${c.email ? escapeHtml(c.email) : (c.phone ? escapeHtml(c.phone) : '')}</span>
+        </label>
+      `).join('')}
+    `;
+  }
+}
+
+function toggleSelectAllContacts(checked) {
+  document.querySelectorAll('.contact-checkbox').forEach(cb => cb.checked = checked);
+}
+
 }
 
 function bindDispatchActions() {

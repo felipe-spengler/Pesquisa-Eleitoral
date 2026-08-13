@@ -1221,3 +1221,15 @@ tbody td {
     grid-template-columns: 1fr !important;
   }
 }
+
+.grid-lists {
+  display: grid;
+  grid-template-columns: 260px 1fr;
+  gap: 20px;
+}
+
+@media (max-width: 900px) {
+  .grid-lists {
+    grid-template-columns: 1fr !important;
+  }
+}

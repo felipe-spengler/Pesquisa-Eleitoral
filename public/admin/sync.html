@@ -1,0 +1,254 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sincronizar Celular — Pesquisa Eleitoral</title>
+  <link rel="stylesheet" href="/css/admin.css">
+  <style>
+    body {
+      background: #04070f;
+      color: #f3f4f6;
+      padding: 16px;
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+    .sync-container {
+      max-width: 500px;
+      margin: 0 auto;
+    }
+    .sync-card {
+      background: rgba(255, 255, 255, 0.03);
+      border: 1px solid rgba(255, 255, 255, 0.08);
+      border-radius: 16px;
+      padding: 24px;
+      backdrop-filter: blur(20px);
+      box-shadow: 0 8px 32px rgba(0,0,0,0.5);
+    }
+    .btn-mobile {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 10px;
+      width: 100%;
+      padding: 16px;
+      font-size: 16px;
+      font-weight: 700;
+      border-radius: 12px;
+      background: linear-gradient(135deg, var(--primary), var(--accent));
+      color: white;
+      border: none;
+      cursor: pointer;
+      box-shadow: 0 4px 16px rgba(99,102,241,0.3);
+      transition: all 0.2s ease;
+      margin-bottom: 20px;
+    }
+    .btn-mobile:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 6px 20px rgba(99,102,241,0.45);
+    }
+    .preview-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 8px 12px;
+      background: rgba(255,255,255,0.02);
+      border-radius: 8px;
+      margin-bottom: 8px;
+      font-size: 13.5px;
+    }
+  </style>
+</head>
+<body>
+<div class="sync-container">
+  <div style="text-align:center; margin-bottom:24px; margin-top:12px;">
+    <div style="font-size:38px; margin-bottom:8px;">📱</div>
+    <h2 style="font-size:20px; font-weight:700; color:white;">Sincronização de Agenda</h2>
+    <div id="target-list" style="margin-top:8px; display:inline-block; font-size:12.5px; background:rgba(99,102,241,0.15); color:#a5b4fc; padding:4px 12px; border-radius:30px; font-weight:500;">
+      Carregando lista...
+    </div>
+  </div>
+
+  <div class="sync-card">
+    <div id="picker-api-section" class="hidden">
+      <button class="btn-mobile" id="btn-open-picker">
+        📖 Abrir Agenda do Celular
+      </button>
+      <div style="text-align:center; margin-bottom:20px;">
+        <span style="color:var(--text-muted); font-size:13px;">— ou copie e cole abaixo —</span>
+      </div>
+    </div>
+
+    <div class="form-group">
+      <label class="form-label" style="font-size:14px; margin-bottom:8px;">Copiar e Colar (Planilha/Texto)</label>
+      <textarea class="form-control" id="paste-area" rows="6" placeholder="Cole aqui seus contatos copiados da planilha. Ex:&#10;João Silva, joao@email.com, +5545999998888&#10;Maria Santos,, +5545888887777" style="font-size:13px; line-height:1.5;"></textarea>
+      <p style="font-size:11.5px; color:var(--text-muted); margin-top:6px; line-height:1.4;">
+        * Separe as informações por vírgula (,), ponto e vírgula (;) ou Tab. Um contato por linha.
+      </p>
+    </div>
+
+    <button class="btn btn-secondary w-full" id="btn-parse-paste" style="padding:12px; font-weight:600;">
+      🔍 Visualizar Contatos
+    </button>
+
+    <div id="preview-section" class="mt-6 hidden">
+      <h3 style="font-size:14px; font-weight:700; color:white; margin-bottom:12px;" id="preview-title">Contatos Carregados (0)</h3>
+      <div style="max-height:220px; overflow-y:auto; margin-bottom:16px;" id="preview-list"></div>
+      
+      <button class="btn btn-primary w-full btn-lg" id="btn-submit-sync" style="padding:14px;">
+        ✅ Confirmar Importação
+      </button>
+    </div>
+  </div>
+</div>
+
+<script>
+  const urlParams = new URLSearchParams(window.location.search);
+  const token = urlParams.get('token');
+  const listId = urlParams.get('list_id');
+
+  if (!token || !listId) {
+    alert('Link de sincronização inválido ou expirado.');
+  }
+
+  let loadedContacts = [];
+
+  // Checar suporte à API nativa de contatos
+  const isPickerSupported = ('contacts' in navigator && 'select' in navigator.contacts);
+  if (isPickerSupported) {
+    document.getElementById('picker-api-section').classList.remove('hidden');
+    document.getElementById('btn-open-picker').addEventListener('click', async () => {
+      try {
+        const props = ['name', 'tel', 'email'];
+        const opts = { multiple: true };
+        const contacts = await navigator.contacts.select(props, opts);
+        
+        if (contacts && contacts.length > 0) {
+          loadedContacts = contacts.map(c => {
+            const name = c.name && c.name[0] ? c.name[0] : '';
+            const phone = c.tel && c.tel[0] ? c.tel[0] : '';
+            const email = c.email && c.email[0] ? c.email[0] : '';
+            return { name, phone, email };
+          });
+          showPreview();
+        }
+      } catch (err) {
+        console.error('Picker API error:', err);
+      }
+    });
+  }
+
+  // Obter nome da lista
+  async function fetchListName() {
+    try {
+      const res = await fetch('/api/admin/lists', {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      const currentList = data.find(l => l.id == listId);
+      if (currentList) {
+        document.getElementById('target-list').innerHTML = `📍 Lista: <strong>${currentList.name}</strong>`;
+      } else {
+        document.getElementById('target-list').innerText = 'Lista destino não encontrada';
+      }
+    } catch (e) {
+      document.getElementById('target-list').innerText = 'Erro ao conectar';
+    }
+  }
+  fetchListName();
+
+  // Parsing da área de texto
+  document.getElementById('btn-parse-paste').addEventListener('click', () => {
+    const text = document.getElementById('paste-area').value.trim();
+    if (!text) {
+      alert('Por favor, cole algum contato antes de prosseguir.');
+      return;
+    }
+
+    const lines = text.split('\n');
+    loadedContacts = [];
+
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      const parts = line.split(/[,\t;]/).map(p => p.trim());
+      if (parts.length > 0) {
+        loadedContacts.push({
+          name: parts[0] || '',
+          email: parts[1] || '',
+          phone: parts[2] || ''
+        });
+      }
+    }
+
+    if (loadedContacts.length > 0) {
+      showPreview();
+    } else {
+      alert('Nenhum contato válido encontrado no formato esperado.');
+    }
+  });
+
+  function showPreview() {
+    const previewSection = document.getElementById('preview-section');
+    const previewList = document.getElementById('preview-list');
+    const previewTitle = document.getElementById('preview-title');
+
+    previewTitle.innerText = `Contatos Carregados (${loadedContacts.length})`;
+    previewList.innerHTML = loadedContacts.map(c => `
+      <div class="preview-item">
+        <div>
+          <strong style="color:white;display:block;">${c.name || '—'}</strong>
+          <span style="font-size:11.5px;color:var(--text-muted);">${c.phone || c.email || 'Sem contato'}</span>
+        </div>
+        <span style="font-size:11px;background:rgba(255,255,255,0.06);padding:2px 6px;border-radius:4px;">Pronto</span>
+      </div>
+    `).join('');
+
+    previewSection.classList.remove('hidden');
+    // Scroll smoothly to preview
+    previewSection.scrollIntoView({ behavior: 'smooth' });
+  }
+
+  // Enviar contatos em lote
+  document.getElementById('btn-submit-sync').addEventListener('click', async () => {
+    if (loadedContacts.length === 0) return;
+
+    const btnSubmit = document.getElementById('btn-submit-sync');
+    btnSubmit.disabled = true;
+    btnSubmit.innerText = 'Enviando contatos...';
+
+    try {
+      const res = await fetch('/api/admin/contacts/bulk', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          contacts: loadedContacts,
+          list_id: listId
+        })
+      });
+      const data = await res.json();
+
+      if (res.ok) {
+        alert(`Sucesso! ${data.imported} contatos sincronizados com a lista.`);
+        // Redireciona ou limpa
+        window.close();
+        document.getElementById('paste-area').value = '';
+        document.getElementById('preview-section').classList.add('hidden');
+        loadedContacts = [];
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = '✅ Confirmar Importação';
+      } else {
+        alert(`Erro: ${data.error}`);
+        btnSubmit.disabled = false;
+        btnSubmit.innerText = 'Confirmar Importação';
+      }
+    } catch (e) {
+      alert('Falha ao enviar dados para o servidor.');
+      btnSubmit.disabled = false;
+      btnSubmit.innerText = 'Confirmar Importação';
+    }
+  });
+</script>
+</body>
+</html>

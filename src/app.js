@@ -30,6 +30,24 @@ app.use(cors({
   credentials: true,
 }));
 
+// CSRF Protection Middleware
+app.use((req, res, next) => {
+  const allowedMethods = ['GET', 'HEAD', 'OPTIONS'];
+  if (allowedMethods.includes(req.method)) {
+    return next();
+  }
+
+  const origin = req.headers.origin || req.headers.referer;
+  const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 4444}`;
+
+  // Allow requests without Origin/Referer (e.g. non-browser API clients), but if present, they must match our domain
+  if (origin && !origin.startsWith(appUrl) && !origin.startsWith('http://localhost')) {
+    return res.status(403).json({ error: 'CSRF validation failed.' });
+  }
+  next();
+});
+
+
 // =============================================
 // Rate Limiting
 // =============================================
@@ -85,6 +103,10 @@ app.get('/', (req, res) => {
 
 app.get('/admin', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'admin', 'login.html'));
+});
+
+app.get('/admin/sync', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'admin', 'sync.html'));
 });
 
 app.get('/admin/*', (req, res) => {
