@@ -628,11 +628,11 @@ async function renderContacts() {
             📂 Todos os Contatos
           </div>
           ${contactLists.map(l => `
-            <div class="nav-item ${selectedListId == l.id ? 'active' : ''}" style="margin:0; padding:8px 12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;" onclick="selectList(${l.id})">
+            <div class="nav-item ${selectedListId == l.id ? 'active' : ''}" style="margin:0; padding:8px 12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;" class="btn-select-list" data-list-id="${Number(l.id)}">
               <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px;">📋 ${escapeHtml(l.name)}</span>
               <div style="display:flex; gap:6px;" onclick="event.stopPropagation();">
                 <span style="cursor:pointer; font-size:12px; opacity:0.7;" class="btn-rename-list" data-id="${Number(l.id)}" data-name="${escapeHtml(l.name)}">✏️</span>
-                <span style="cursor:pointer; font-size:12px; opacity:0.7;" onclick="confirmDeleteList(${Number(l.id)})">🗑️</span>
+                <span style="cursor:pointer; font-size:12px; opacity:0.7;" class="btn-delete-list" data-id="${Number(l.id)}">🗑️</span>
               </div>
             </div>
           `).join('')}
@@ -683,8 +683,12 @@ async function renderContacts() {
                       <td>${c.phone ? escapeHtml(c.phone) : '—'}</td>
                       <td style="text-align:right;">
                         <div style="display:flex; gap:8px; justify-content:flex-end;">
-                          <button class="btn btn-secondary btn-sm" style="padding:4px 8px;" onclick="openEditContactModal(${c.id}, '${escapeHtml(c.name || '')}', '${escapeHtml(c.email || '')}', '${escapeHtml(c.phone || '')}')">✏️</button>
-                          <button class="btn btn-danger btn-sm" style="padding:4px 8px;" onclick="confirmDeleteContact(${c.id})">🗑️</button>
+                          <button class="btn btn-secondary btn-sm btn-edit-contact" style="padding:4px 8px;"
+                            data-id="${Number(c.id)}"
+                            data-name="${escapeHtml(c.name || '')}"
+                            data-email="${escapeHtml(c.email || '')}"
+                            data-phone="${escapeHtml(c.phone || '')}">✏️</button>
+                          <button class="btn btn-danger btn-sm btn-delete-contact" style="padding:4px 8px;" data-id="${Number(c.id)}">🗑️</button>
                         </div>
                       </td>
                     </tr>
@@ -702,9 +706,25 @@ async function renderContacts() {
     setupCsvUpload();
   }
 
-  // Bind rename list buttons (data-attribute pattern avoids XSS via onclick attribute)
+  // Bind list navigation (data-attribute pattern avoids XSS via onclick)
+  document.querySelectorAll('.btn-select-list').forEach(el => {
+    el.addEventListener('click', () => selectList(Number(el.dataset.listId)));
+  });
+  document.querySelectorAll('.btn-delete-list').forEach(el => {
+    el.addEventListener('click', (e) => { e.stopPropagation(); confirmDeleteList(Number(el.dataset.id)); });
+  });
+  // Bind rename list buttons
   document.querySelectorAll('.btn-rename-list').forEach(btn => {
     btn.addEventListener('click', () => openRenameListModal(Number(btn.dataset.id), btn.dataset.name));
+  });
+  // Bind contact action buttons
+  document.querySelectorAll('.btn-edit-contact').forEach(btn => {
+    btn.addEventListener('click', () => openEditContactModal(
+      Number(btn.dataset.id), btn.dataset.name, btn.dataset.email, btn.dataset.phone
+    ));
+  });
+  document.querySelectorAll('.btn-delete-contact').forEach(btn => {
+    btn.addEventListener('click', () => confirmDeleteContact(Number(btn.dataset.id)));
   });
 }
 
@@ -964,15 +984,15 @@ async function renderDispatch() {
           <label class="form-label">Pesquisa</label>
           <select class="form-control" id="dispatch-survey">
             <option value="">Selecione a pesquisa...</option>
-            ${surveys.map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('')}
+            ${surveys.map(s => `<option value="${Number(s.id)}">${escapeHtml(s.title)}</option>`).join('')}
           </select>
         </div>
 
         <div class="form-group">
           <label class="form-label">Filtrar por Lista</label>
-          <select class="form-control" id="dispatch-list-select" onchange="filterDispatchContacts(this.value)">
+          <select class="form-control" id="dispatch-list-select">
             <option value="all">Todas as Listas</option>
-            ${lists.map(l => `<option value="${l.id}">${escapeHtml(l.name)}</option>`).join('')}
+            ${lists.map(l => `<option value="${Number(l.id)}">${escapeHtml(l.name)}</option>`).join('')}
           </select>
         </div>
 
@@ -1024,7 +1044,7 @@ async function renderDispatch() {
         <div class="mt-4">
           <select class="form-control" id="status-survey-select">
             <option value="">Selecione a pesquisa...</option>
-            ${(sv||[]).map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('')}
+            ${(sv||[]).map(s => `<option value="${Number(s.id)}">${escapeHtml(s.title)}</option>`).join('')}
           </select>
           <button class="btn btn-secondary w-full mt-2" id="btn-check-dispatch-status">🔄 Verificar Status</button>
         </div>
@@ -1082,6 +1102,10 @@ function bindDispatchActions() {
   const btnCheck = document.getElementById('btn-check-dispatch-status');
   if (btnCheck) {
     btnCheck.addEventListener('click', () => checkDispatchStatus());
+  }
+  const listSelect = document.getElementById('dispatch-list-select');
+  if (listSelect) {
+    listSelect.addEventListener('change', () => filterDispatchContacts(listSelect.value));
   }
 }
 
@@ -1170,7 +1194,7 @@ async function renderResults() {
       <div class="flex gap-3">
         <select class="form-control" id="results-survey-select" style="max-width:400px">
           <option value="">Selecione...</option>
-          ${surveys.map(s => `<option value="${s.id}">${escapeHtml(s.title)}</option>`).join('')}
+          ${surveys.map(s => `<option value="${Number(s.id)}">${escapeHtml(s.title)}</option>`).join('')}
         </select>
         <button class="btn btn-primary" id="btn-load-results">Ver Resultados</button>
         <button class="btn btn-secondary" id="btn-export" style="display:none">⬇️ Exportar CSV</button>
