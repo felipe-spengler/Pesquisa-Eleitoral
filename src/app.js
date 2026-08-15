@@ -81,12 +81,14 @@ const apiLimiter = rateLimit({
   message: { error: 'Muitas requisições. Tente novamente em alguns minutos.' },
   standardHeaders: true,
   legacyHeaders: false,
+  validate: { trustProxy: false },
 });
 
 const submitLimiter = rateLimit({
   windowMs: 5 * 60 * 1000, // 5 minutos
   max: 10,
   message: { error: 'Muitas tentativas de resposta. Aguarde alguns minutos.' },
+  validate: { trustProxy: false },
 });
 
 // =============================================
