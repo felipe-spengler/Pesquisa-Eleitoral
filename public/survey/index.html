@@ -53,15 +53,15 @@
 
     <!-- Fixed Bottom Navigation -->
     <div class="survey-navigation">
-      <button class="btn-nav btn-prev" id="btn-prev" onclick="prevQuestion()" disabled>
+      <button class="btn-nav btn-prev" id="btn-prev" disabled>
         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M15 19l-7-7 7-7"/></svg>
         Voltar
       </button>
-      <button class="btn-nav btn-next" id="btn-next" onclick="nextQuestion()">
+      <button class="btn-nav btn-next" id="btn-next">
         Avançar
         <svg width="16" height="16" fill="none" stroke="currentColor" viewBox="0 0 24 24" style="flex-shrink:0"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M9 5l7 7-7 7"/></svg>
       </button>
-      <button class="btn-nav btn-submit hidden" id="btn-submit" onclick="submitSurvey()">
+      <button class="btn-nav btn-submit hidden" id="btn-submit">
         <span id="submit-text">Enviar Voto</span>
         <div class="spinner hidden" id="submit-spinner" style="border-top-color:white;border-color:rgba(255,255,255,0.2)"></div>
       </button>
@@ -465,6 +465,10 @@ async function submitSurvey() {
 // =============================================
 // INIT
 // =============================================
+document.getElementById('btn-prev').addEventListener('click', prevQuestion);
+document.getElementById('btn-next').addEventListener('click', nextQuestion);
+document.getElementById('btn-submit').addEventListener('click', submitSurvey);
+
 loadSurvey();
 </script>
 </body>
