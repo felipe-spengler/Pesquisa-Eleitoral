@@ -27,6 +27,7 @@ app.use(
       directives: {
         defaultSrc: ["'self'"],
         scriptSrc: ["'self'", "'unsafe-inline'"],   // inline scripts no frontend existente
+        scriptSrcAttr: ["'self'", "'unsafe-inline'"], // permite event handlers inline (ex: injetados via extensões)
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],
         imgSrc: ["'self'", 'data:'],
