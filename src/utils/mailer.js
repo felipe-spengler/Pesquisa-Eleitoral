@@ -13,6 +13,20 @@ const transporter = nodemailer.createTransport({
   tls: { rejectUnauthorized: false },
 });
 
+function escapeHtml(str) {
+  if (typeof str !== 'string') return '';
+  return str.replace(/[&<>"']/g, function (m) {
+    switch (m) {
+      case '&': return '&amp;';
+      case '<': return '&lt;';
+      case '>': return '&gt;';
+      case '"': return '&quot;';
+      case "'": return '&#039;';
+      default: return m;
+    }
+  });
+}
+
 /**
  * Envia e-mail com link de pesquisa para o contato.
  * @param {object} opts
@@ -22,6 +36,10 @@ const transporter = nodemailer.createTransport({
  * @param {string} opts.surveyUrl - URL única com token
  */
 async function sendSurveyEmail({ to, name, surveyTitle, surveyUrl }) {
+  const safeName = escapeHtml(name || 'Participante');
+  const safeSurveyTitle = escapeHtml(surveyTitle);
+  const safeSurveyUrl = escapeHtml(surveyUrl);
+
   const html = `
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -42,21 +60,21 @@ async function sendSurveyEmail({ to, name, surveyTitle, surveyUrl }) {
               </tr>
               <tr>
                 <td style="padding:40px;color:#e2e8f0;">
-                  <p style="font-size:18px;margin:0 0 16px;">Olá, <strong>${name || 'Participante'}</strong>!</p>
+                  <p style="font-size:18px;margin:0 0 16px;">Olá, <strong>${safeName}</strong>!</p>
                   <p style="font-size:15px;color:#94a3b8;line-height:1.6;margin:0 0 32px;">
                     Você foi convidado(a) a participar da pesquisa:
-                    <strong style="color:#a78bfa;">${surveyTitle}</strong>.
+                    <strong style="color:#a78bfa;">${safeSurveyTitle}</strong>.
                     Sua opinião é muito importante para nós.
                   </p>
                   <div style="text-align:center;margin:32px 0;">
-                    <a href="${surveyUrl}"
+                    <a href="${safeSurveyUrl}"
                        style="display:inline-block;background:linear-gradient(135deg,#6366f1,#8b5cf6);color:#fff;text-decoration:none;padding:16px 40px;border-radius:12px;font-size:16px;font-weight:700;letter-spacing:0.5px;">
-                      ✅ Participar da Pesquisa
+                       ✅ Participar da Pesquisa
                     </a>
                   </div>
                   <p style="font-size:13px;color:#64748b;text-align:center;margin:24px 0 0;">
                     Ou copie e cole o link no seu navegador:<br>
-                    <a href="${surveyUrl}" style="color:#818cf8;">${surveyUrl}</a>
+                    <a href="${safeSurveyUrl}" style="color:#818cf8;">${safeSurveyUrl}</a>
                   </p>
                   <hr style="border:none;border-top:1px solid #334155;margin:32px 0;">
                   <p style="font-size:12px;color:#475569;text-align:center;margin:0;">
@@ -79,5 +97,6 @@ async function sendSurveyEmail({ to, name, surveyTitle, surveyUrl }) {
     html,
   });
 }
+
 
 module.exports = { sendSurveyEmail };

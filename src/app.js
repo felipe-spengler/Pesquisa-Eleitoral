@@ -140,6 +140,10 @@ app.get('/admin/*', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'admin', 'dashboard.html'));
 });
 
+app.get('/survey/public/:id', (req, res) => {
+  res.sendFile(path.join(__dirname, '..', 'public', 'survey', 'index.html'));
+});
+
 app.get('/survey/:token', (req, res) => {
   res.sendFile(path.join(__dirname, '..', 'public', 'survey', 'index.html'));
 });

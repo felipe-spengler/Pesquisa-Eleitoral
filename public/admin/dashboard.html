@@ -63,7 +63,7 @@
   <main class="main-content">
     <div class="topbar">
       <div class="flex items-center">
-        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Menu" onclick="toggleSidebar()" style="display:none;background:none;border:none;color:var(--text-primary);cursor:pointer;padding:8px;margin-right:12px;align-items:center;justify-content:center;">
+        <button class="sidebar-toggle" id="sidebar-toggle" aria-label="Menu" style="display:none;background:none;border:none;color:var(--text-primary);cursor:pointer;padding:8px;margin-right:12px;align-items:center;justify-content:center;">
           <svg width="22" height="22" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2.5" d="M4 6h16M4 12h16M4 18h16"/></svg>
         </button>
         <div>
@@ -190,6 +190,9 @@ document.getElementById('modal-close').addEventListener('click', closeModal);
 document.getElementById('modal-overlay').addEventListener('click', (e) => {
   if (e.target === document.getElementById('modal-overlay')) closeModal();
 });
+
+// Sidebar toggle button (removed inline onclick)
+document.getElementById('sidebar-toggle').addEventListener('click', toggleSidebar);
 
 // =============================================
 // NAVIGATION
@@ -447,9 +450,10 @@ async function editSurvey(id) {
 
   const topbarActions = document.getElementById('topbar-actions');
   topbarActions.innerHTML = `
-    <button class="btn btn-secondary btn-sm" onclick="renderSurveys()">← Voltar</button>
+    <button class="btn btn-secondary btn-sm" id="btn-back-surveys">← Voltar</button>
     <button class="btn btn-primary btn-sm" id="btn-add-question">+ Adicionar Pergunta</button>
   `;
+  document.getElementById('btn-back-surveys').addEventListener('click', () => renderSurveys());
   document.getElementById('btn-add-question').addEventListener('click', () => openAddQuestionModal(survey.id));
 
   renderSurveyEditor(survey);
@@ -486,6 +490,16 @@ function renderSurveyEditor(survey) {
     const newStatus = !survey.is_active;
     btnToggle.addEventListener('click', () => toggleSurveyStatus(surveyId, newStatus));
   }
+
+  // Bind question card actions (delete question, delete option, add option)
+  document.getElementById('page-content').addEventListener('click', (e) => {
+    const delQ = e.target.closest('.btn-delete-question');
+    if (delQ) { deleteQuestion(Number(delQ.dataset.qid)); return; }
+    const delO = e.target.closest('.btn-delete-option');
+    if (delO) { deleteOption(Number(delO.dataset.oid), Number(delO.dataset.qid)); return; }
+    const addO = e.target.closest('.btn-add-option');
+    if (addO) { addOption(Number(addO.dataset.qid)); return; }
+  });
 }
 
 function renderQuestionCard(q, num) {
@@ -498,7 +512,7 @@ function renderQuestionCard(q, num) {
           <span class="badge badge-info">${typeLabels[q.type]}</span>
           <span class="text-muted text-xs" style="margin-left:8px">Pergunta ${num}</span>
         </div>
-        <button class="btn btn-danger btn-sm" onclick="deleteQuestion(${q.id})">Remover</button>
+        <button class="btn btn-danger btn-sm btn-delete-question" data-qid="${q.id}">Remover</button>
       </div>
       <p style="font-weight:600;color:var(--text-primary);margin-bottom:${hasOptions ? '16px' : '0'}">${escapeHtml(q.question_text)}</p>
       ${hasOptions ? `
@@ -506,13 +520,13 @@ function renderQuestionCard(q, num) {
           ${q.options.map(o => `
             <div class="option-row" id="opt-row-${o.id}">
               <span class="badge badge-gray" style="flex:1">○ ${escapeHtml(o.option_text)}</span>
-              <button class="btn btn-danger btn-sm" onclick="deleteOption(${o.id}, ${q.id})">✕</button>
+              <button class="btn btn-danger btn-sm btn-delete-option" data-oid="${o.id}" data-qid="${q.id}">✕</button>
             </div>
           `).join('')}
 
           <div class="option-row mt-2">
             <input type="text" class="form-control" id="new-opt-${q.id}" placeholder="Nova opção..." style="flex:1">
-            <button class="btn btn-secondary btn-sm" onclick="addOption(${q.id})">+ Adicionar</button>
+            <button class="btn btn-secondary btn-sm btn-add-option" data-qid="${q.id}">+ Adicionar</button>
           </div>
         </div>
       ` : ''}
@@ -534,7 +548,7 @@ function openAddQuestionModal(surveyId) {
       </div>
       <div class="form-group">
         <label class="form-label">Tipo</label>
-        <select class="form-control" id="q-type" onchange="toggleOptionsInput(this.value)">
+        <select class="form-control" id="q-type">
           <option value="single_choice">Escolha Única</option>
           <option value="multiple_choice">Múltipla Escolha</option>
           <option value="text">Texto Aberto</option>
@@ -547,6 +561,8 @@ function openAddQuestionModal(surveyId) {
       <button type="submit" class="btn btn-primary w-full mt-4">Salvar Pergunta</button>
     </form>
   `);
+
+  document.getElementById('q-type').addEventListener('change', (e) => toggleOptionsInput(e.target.value));
 
   document.getElementById('add-question-form').addEventListener('submit', async (e) => {
     e.preventDefault();
@@ -621,16 +637,16 @@ async function renderContacts() {
       <div class="card" style="padding: 16px;">
         <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
           <h3 class="card-title">📁 Listas</h3>
-          <button class="btn btn-primary btn-sm" onclick="openCreateListModal()">+ Criar</button>
+          <button class="btn btn-primary btn-sm" id="btn-create-list">+ Criar</button>
         </div>
         <div style="display:flex; flex-direction:column; gap:6px;">
-          <div class="nav-item ${selectedListId === 'all' ? 'active' : ''}" style="margin:0; padding:8px 12px; border-radius:8px;" onclick="selectList('all')">
+          <div class="nav-item ${selectedListId === 'all' ? 'active' : ''} btn-select-list" style="margin:0; padding:8px 12px; border-radius:8px;" data-list-id="all">
             📂 Todos os Contatos
           </div>
           ${contactLists.map(l => `
-            <div class="nav-item ${selectedListId == l.id ? 'active' : ''}" style="margin:0; padding:8px 12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;" class="btn-select-list" data-list-id="${Number(l.id)}">
+            <div class="nav-item ${selectedListId == l.id ? 'active' : ''} btn-select-list" style="margin:0; padding:8px 12px; border-radius:8px; display:flex; justify-content:space-between; align-items:center;" data-list-id="${Number(l.id)}">
               <span style="overflow:hidden; text-overflow:ellipsis; white-space:nowrap; max-width:130px;">📋 ${escapeHtml(l.name)}</span>
-              <div style="display:flex; gap:6px;" onclick="event.stopPropagation();">
+              <div class="list-actions" style="display:flex; gap:6px;">
                 <span style="cursor:pointer; font-size:12px; opacity:0.7;" class="btn-rename-list" data-id="${Number(l.id)}" data-name="${escapeHtml(l.name)}">✏️</span>
                 <span style="cursor:pointer; font-size:12px; opacity:0.7;" class="btn-delete-list" data-id="${Number(l.id)}">🗑️</span>
               </div>
@@ -650,7 +666,7 @@ async function renderContacts() {
           <div class="card mb-4">
             <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
               <div class="card-title">📁 Importar CSV para a Lista</div>
-              <button class="btn btn-secondary btn-sm" onclick="openSyncMobileModal()">📱 Sincronizar Celular</button>
+              <button class="btn btn-secondary btn-sm" id="btn-sync-mobile">📱 Sincronizar Celular</button>
             </div>
             <div class="file-drop-zone" id="drop-zone">
               <input type="file" id="csv-file" accept=".csv" class="hidden">
@@ -666,7 +682,7 @@ async function renderContacts() {
         <div class="card">
           <div class="card-header">
             <div class="card-title">👥 Contatos Cadastrados (${contacts.length})</div>
-            ${selectedListId !== 'all' ? `<button class="btn btn-primary btn-sm" onclick="openCreateContactModal()">👤 Novo Contato</button>` : ''}
+            ${selectedListId !== 'all' ? `<button class="btn btn-primary btn-sm" id="btn-new-contact">👤 Novo Contato</button>` : ''}
           </div>
           ${contacts.length === 0 ? `
             <div class="empty-state"><div class="icon">👥</div><h3>Nenhum contato encontrado</h3><p>Cadastre manualmente ou importe um arquivo CSV.</p></div>
@@ -704,18 +720,30 @@ async function renderContacts() {
 
   if (selectedListId !== 'all') {
     setupCsvUpload();
+    const btnSync = document.getElementById('btn-sync-mobile');
+    if (btnSync) btnSync.addEventListener('click', () => openSyncMobileModal());
+    const btnNewContact = document.getElementById('btn-new-contact');
+    if (btnNewContact) btnNewContact.addEventListener('click', () => openCreateContactModal());
   }
+
+  const btnCreateList = document.getElementById('btn-create-list');
+  if (btnCreateList) btnCreateList.addEventListener('click', () => openCreateListModal());
 
   // Bind list navigation (data-attribute pattern avoids XSS via onclick)
   document.querySelectorAll('.btn-select-list').forEach(el => {
-    el.addEventListener('click', () => selectList(Number(el.dataset.listId)));
+    el.addEventListener('click', (e) => {
+      // Prevent navigation if clicking the action icons inside
+      if (e.target.closest('.list-actions')) return;
+      const lid = el.dataset.listId;
+      selectList(lid === 'all' ? 'all' : Number(lid));
+    });
   });
   document.querySelectorAll('.btn-delete-list').forEach(el => {
     el.addEventListener('click', (e) => { e.stopPropagation(); confirmDeleteList(Number(el.dataset.id)); });
   });
   // Bind rename list buttons
   document.querySelectorAll('.btn-rename-list').forEach(btn => {
-    btn.addEventListener('click', () => openRenameListModal(Number(btn.dataset.id), btn.dataset.name));
+    btn.addEventListener('click', (e) => { e.stopPropagation(); openRenameListModal(Number(btn.dataset.id), btn.dataset.name); });
   });
   // Bind contact action buttons
   document.querySelectorAll('.btn-edit-contact').forEach(btn => {
@@ -1017,10 +1045,10 @@ async function renderDispatch() {
           <div style="max-height:200px;overflow-y:auto;background:var(--bg-surface);border:1px solid var(--border);border-radius:var(--radius-sm);padding:8px" id="contacts-list">
             ${contacts.length === 0 ? '<p class="text-muted text-sm" style="padding:8px">Nenhum contato. Importe um CSV primeiro.</p>' : `
               <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);margin-bottom:4px">
-                <input type="checkbox" id="select-all-contacts" onchange="toggleSelectAllContacts(this.checked)"> Selecionar todos (${contacts.length})
+                <input type="checkbox" id="select-all-contacts"> Selecionar todos (${contacts.length})
               </label>
               ${contacts.map(c => `
-                <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-radius:4px;" class="contact-check-label" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''">
+                <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-radius:4px;" class="contact-check-label">
                   <input type="checkbox" class="contact-checkbox" value="${Number(c.id)}">
                   <span style="color:var(--text-primary);font-weight:500">${c.name ? escapeHtml(c.name) : '—'}</span>
                   <span style="color:var(--text-muted)">${c.email ? escapeHtml(c.email) : (c.phone ? escapeHtml(c.phone) : '')}</span>
@@ -1046,7 +1074,7 @@ async function renderDispatch() {
             <option value="">Selecione a pesquisa...</option>
             ${(sv||[]).map(s => `<option value="${Number(s.id)}">${escapeHtml(s.title)}</option>`).join('')}
           </select>
-          <button class="btn btn-secondary w-full mt-2" id="btn-check-dispatch-status">🔄 Verificar Status</button>
+          <button class="btn btn-secondary w-full mt-2" id="btn-check-dispatch-status" data-action="check-status">🔄 Verificar Status</button>
         </div>
         <div id="dispatch-status-result" class="mt-4"></div>
       </div>
@@ -1054,6 +1082,10 @@ async function renderDispatch() {
   `;
 
   bindDispatchActions();
+
+  // Bind select-all contacts checkbox (rendered inside innerHTML)
+  const selAll = document.getElementById('select-all-contacts');
+  if (selAll) selAll.addEventListener('change', (e) => toggleSelectAllContacts(e.target.checked));
 }
 
 async function filterDispatchContacts(listId) {
@@ -1069,10 +1101,10 @@ async function filterDispatchContacts(listId) {
   } else {
     contactsListEl.innerHTML = `
       <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-bottom:1px solid var(--border);margin-bottom:4px">
-        <input type="checkbox" id="select-all-contacts" onchange="toggleSelectAllContacts(this.checked)"> Selecionar todos (${filteredContacts.length})
+        <input type="checkbox" id="select-all-contacts"> Selecionar todos (${filteredContacts.length})
       </label>
       ${filteredContacts.map(c => `
-        <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-radius:4px;" class="contact-check-label" onmouseover="this.style.background='var(--bg-hover)'" onmouseout="this.style.background=''">
+        <label style="display:flex;align-items:center;gap:8px;padding:6px;cursor:pointer;font-size:13px;border-radius:4px;" class="contact-check-label">
           <input type="checkbox" class="contact-checkbox" value="${Number(c.id)}">
           <span style="color:var(--text-primary);font-weight:500">${c.name ? escapeHtml(c.name) : '—'}</span>
           <span style="color:var(--text-muted)">${c.email ? escapeHtml(c.email) : (c.phone ? escapeHtml(c.phone) : '')}</span>
@@ -1080,6 +1112,10 @@ async function filterDispatchContacts(listId) {
       `).join('')}
     `;
   }
+
+  // Re-bind select-all after innerHTML update
+  const selAll = document.getElementById('select-all-contacts');
+  if (selAll) selAll.addEventListener('change', (e) => toggleSelectAllContacts(e.target.checked));
 }
 
 function toggleSelectAllContacts(checked) {

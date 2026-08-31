@@ -138,6 +138,15 @@ function getToken() {
   return parts[parts.length - 1] || parts[parts.length - 2];
 }
 
+function isPublicLink() {
+  return window.location.pathname.includes('/survey/public/');
+}
+
+// FingerprintJS promise initialization (only used if public)
+const fpPromise = isPublicLink() 
+  ? import('https://openfpcdn.io/fingerprintjs/v4').then(FingerprintJS => FingerprintJS.load())
+  : null;
+
 function showScreen(id) {
   ['loading-screen','survey-screen','answered-screen','notfound-screen','error-screen','success-screen'].forEach(s => {
     const el = document.getElementById(s);
@@ -165,8 +174,16 @@ const surveyToken = getToken();
 // LOAD SURVEY
 // =============================================
 async function loadSurvey() {
+  if (isPublicLink()) {
+    if (localStorage.getItem('survey_completed_' + surveyToken)) {
+      showScreen('answered-screen');
+      return;
+    }
+  }
+
   try {
-    const res = await fetch(`/api/survey/${surveyToken}`);
+    const url = isPublicLink() ? `/api/survey/public/${surveyToken}` : `/api/survey/${surveyToken}`;
+    const res = await fetch(url);
     const data = await res.json();
 
     if (res.status === 404 || data.code === 'NOT_FOUND') {
@@ -437,14 +454,27 @@ async function submitSurvey() {
   submitSpinner.classList.remove('hidden');
 
   try {
-    const res = await fetch(`/api/survey/${surveyToken}/submit`, {
+    let visitorId = null;
+    if (isPublicLink()) {
+      const fp = await fpPromise;
+      const result = await fp.get();
+      visitorId = result.visitorId;
+    }
+
+    const url = isPublicLink() ? `/api/survey/public/${surveyToken}/submit` : `/api/survey/${surveyToken}/submit`;
+    const payload = isPublicLink() ? { answers: answersPayload, visitorId } : { answers: answersPayload };
+
+    const res = await fetch(url, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ answers: answersPayload }),
+      body: JSON.stringify(payload),
     });
     const data = await res.json();
 
     if (res.ok) {
+      if (isPublicLink()) {
+        localStorage.setItem('survey_completed_' + surveyToken, 'true');
+      }
       showScreen('success-screen');
     } else if (res.status === 409 || data.status === 'answered') {
       showScreen('answered-screen');

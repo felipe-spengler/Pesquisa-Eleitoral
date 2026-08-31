@@ -11,7 +11,13 @@ router.post('/login', async (req, res) => {
   try {
     const { email, password } = req.body;
 
-    if (!email || !password) {
+
+    if (typeof email !== 'string' || typeof password !== 'string') {
+      return res.status(400).json({ error: 'Formato de e-mail ou senha inválido.' });
+    }
+
+
+    if (!email.trim() || !password) {
       return res.status(400).json({ error: 'E-mail e senha são obrigatórios.' });
     }
 
@@ -37,8 +43,10 @@ router.post('/login', async (req, res) => {
     res.cookie('authToken', token, {
       httpOnly: true,
       sameSite: 'strict',
+      secure: process.env.NODE_ENV === 'production' || process.env.COOKIE_SECURE === 'true',
       maxAge: 8 * 60 * 60 * 1000,
     });
+
 
     return res.json({ token, user: { id: user.id, email: user.email } });
   } catch (err) {
