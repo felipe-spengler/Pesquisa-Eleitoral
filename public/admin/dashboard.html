@@ -471,6 +471,13 @@ function renderSurveyEditor(survey) {
           ${survey.is_active ? 'Desativar' : 'Ativar'}
         </button>
       </div>
+      <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+        <label class="form-label text-xs">Link Público (Voto Único por Aparelho)</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" class="form-control" readonly value="\${window.location.origin}/survey/public/${survey.id}" style="font-size:13px; background:var(--bg-secondary);">
+          <button class="btn btn-secondary" onclick="navigator.clipboard.writeText('\\${window.location.origin}/survey/public/${survey.id}'); toast('Copiado', 'Link copiado para a área de transferência', 'success');">Copiar Link</button>
+        </div>
+      </div>
     </div>
 
     <div id="questions-container">
