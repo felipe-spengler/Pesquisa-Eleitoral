@@ -10,24 +10,24 @@
 
 :root {
   /* Backgrounds */
-  --bg-base:       #04070f;
-  --bg-surface:    #080e1d;
-  --bg-card:       #0d1628;
-  --bg-card-2:     #111e33;
-  --bg-hover:      #182338;
+  --bg-base:       #061d24;
+  --bg-surface:    #0a2933;
+  --bg-card:       #0d3440;
+  --bg-card-2:     #124352;
+  --bg-hover:      #195466;
 
   /* Borders */
-  --border:        #1e2f47;
-  --border-light:  #2d4160;
-  --border-glow:   rgba(99, 102, 241, 0.4);
+  --border:        #195466;
+  --border-light:  #216980;
+  --border-glow:   rgba(14, 165, 233, 0.4);
 
   /* Brand Colors */
-  --primary:       #6366f1;
-  --primary-dark:  #4f46e5;
-  --primary-light: #818cf8;
-  --primary-glow:  rgba(99, 102, 241, 0.2);
-  --accent:        #8b5cf6;
-  --accent-light:  #a78bfa;
+  --primary:       #0ea5e9;
+  --primary-dark:  #0284c7;
+  --primary-light: #38bdf8;
+  --primary-glow:  rgba(14, 165, 233, 0.2);
+  --accent:        #06b6d4;
+  --accent-light:  #22d3ee;
 
   /* Status */
   --success:       #10b981;

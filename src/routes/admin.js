@@ -5,9 +5,26 @@ const { parse } = require('csv-parse');
 const { stringify } = require('csv-stringify/sync');
 const { query } = require('../config/db');
 const auth = require('../middleware/auth');
+const fs = require('fs');
+const path = require('path');
 
 const router = express.Router();
 const upload = multer({ storage: multer.memoryStorage(), limits: { fileSize: 10 * 1024 * 1024 } });
+
+// Disk storage for image uploads
+const diskStorage = multer.diskStorage({
+  destination: function (req, file, cb) {
+    const dir = path.join(__dirname, '..', '..', 'public', 'uploads');
+    if (!fs.existsSync(dir)){
+        fs.mkdirSync(dir, { recursive: true });
+    }
+    cb(null, dir);
+  },
+  filename: function (req, file, cb) {
+    cb(null, Date.now() + '-' + file.originalname.replace(/[^a-zA-Z0-9.]/g, ''));
+  }
+});
+const diskUpload = multer({ storage: diskStorage, limits: { fileSize: 5 * 1024 * 1024 } });
 
 // Todas as rotas de admin requerem autenticação
 router.use(auth);
@@ -61,13 +78,13 @@ router.get('/surveys/:id', async (req, res) => {
 // POST /api/admin/surveys
 router.post('/surveys', async (req, res) => {
   try {
-    const { title, is_active = true } = req.body;
+    const { title, is_active = true, theme_config = {} } = req.body;
     if (typeof title !== 'string' || title.trim() === '') {
       return res.status(400).json({ error: 'Título é obrigatório e deve ser uma string.' });
     }
     const result = await query(
-      'INSERT INTO surveys (title, is_active) VALUES ($1, $2) RETURNING *',
-      [title.trim(), is_active]
+      'INSERT INTO surveys (title, is_active, theme_config) VALUES ($1, $2, $3) RETURNING *',
+      [title.trim(), is_active, theme_config]
     );
 
     return res.status(201).json(result.rows[0]);
@@ -81,10 +98,10 @@ router.post('/surveys', async (req, res) => {
 router.put('/surveys/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { title, is_active } = req.body;
+    const { title, is_active, theme_config } = req.body;
     const result = await query(
-      'UPDATE surveys SET title = COALESCE($1, title), is_active = COALESCE($2, is_active) WHERE id = $3 RETURNING *',
-      [title, is_active, id]
+      'UPDATE surveys SET title = COALESCE($1, title), is_active = COALESCE($2, is_active), theme_config = COALESCE($3, theme_config) WHERE id = $4 RETURNING *',
+      [title, is_active, theme_config, id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Pesquisa não encontrada.' });
     return res.json(result.rows[0]);
@@ -133,8 +150,8 @@ router.post('/surveys/:surveyId/questions', async (req, res) => {
       for (const opt of options) {
         if (opt.option_text && opt.option_text.trim()) {
           await query(
-            'INSERT INTO options (question_id, option_text) VALUES ($1, $2)',
-            [question.id, opt.option_text.trim()]
+            'INSERT INTO options (question_id, option_text, image_url) VALUES ($1, $2, $3)',
+            [question.id, opt.option_text.trim(), opt.image_url || null]
           );
         }
       }
@@ -189,13 +206,13 @@ router.delete('/questions/:id', async (req, res) => {
 router.post('/questions/:questionId/options', async (req, res) => {
   try {
     const { questionId } = req.params;
-    const { option_text } = req.body;
+    const { option_text, image_url } = req.body;
     if (typeof option_text !== 'string' || option_text.trim() === '') {
       return res.status(400).json({ error: 'option_text é obrigatório e deve ser uma string.' });
     }
     const result = await query(
-      'INSERT INTO options (question_id, option_text) VALUES ($1, $2) RETURNING *',
-      [questionId, option_text.trim()]
+      'INSERT INTO options (question_id, option_text, image_url) VALUES ($1, $2, $3) RETURNING *',
+      [questionId, option_text.trim(), image_url || null]
     );
 
     return res.status(201).json(result.rows[0]);
@@ -398,6 +415,19 @@ router.post('/contacts/import', upload.single('file'), async (req, res) => {
   } catch (err) {
     console.error('[Admin] CSV import:', err.message);
     return res.status(500).json({ error: `Erro ao processar CSV: ${err.message}` });
+  }
+});
+
+// POST /api/admin/upload - Upload de Imagens
+router.post('/upload', diskUpload.single('file'), async (req, res) => {
+  try {
+    if (!req.file) {
+      return res.status(400).json({ error: 'Nenhum arquivo enviado.' });
+    }
+    return res.json({ url: `/uploads/${req.file.filename}` });
+  } catch (err) {
+    console.error('[Admin] POST upload:', err.message);
+    return res.status(500).json({ error: 'Erro ao fazer upload da imagem.' });
   }
 });
 

@@ -451,10 +451,14 @@ async function editSurvey(id) {
   const topbarActions = document.getElementById('topbar-actions');
   topbarActions.innerHTML = `
     <button class="btn btn-secondary btn-sm" id="btn-back-surveys">← Voltar</button>
-    <button class="btn btn-primary btn-sm" id="btn-add-question">+ Adicionar Pergunta</button>
+    <div style="display:flex; gap:8px;">
+      <button class="btn btn-secondary btn-sm" id="btn-add-demographics">+ Perfil de Amostra</button>
+      <button class="btn btn-primary btn-sm" id="btn-add-question">+ Adicionar Pergunta</button>
+    </div>
   `;
   document.getElementById('btn-back-surveys').addEventListener('click', () => renderSurveys());
   document.getElementById('btn-add-question').addEventListener('click', () => openAddQuestionModal(survey.id));
+  document.getElementById('btn-add-demographics').addEventListener('click', () => openDemographicsModal(survey.id));
 
   renderSurveyEditor(survey);
 }
@@ -472,6 +476,12 @@ function renderSurveyEditor(survey) {
         </button>
       </div>
       <div style="margin-top: 16px; padding-top: 16px; border-top: 1px solid var(--border-color);">
+        <label class="form-label text-xs">Configuração de Tema</label>
+        <div style="display:flex; gap:16px; margin-bottom: 12px; align-items:flex-end; flex-wrap:wrap;">
+          <div><label class="text-xs" style="display:block;margin-bottom:4px;">Cor Fundo</label><input type="color" id="theme-bg" value="${survey.theme_config?.bg_color || '#04070f'}" style="width:40px;height:40px;padding:0;border:none;cursor:pointer;"></div>
+          <div><label class="text-xs" style="display:block;margin-bottom:4px;">Cor Primária</label><input type="color" id="theme-primary" value="${survey.theme_config?.primary_color || '#6366f1'}" style="width:40px;height:40px;padding:0;border:none;cursor:pointer;"></div>
+          <button class="btn btn-secondary btn-sm" onclick="saveTheme(${survey.id})" style="height:40px;">Salvar Tema</button>
+        </div>
         <label class="form-label text-xs">Link Público (Voto Único por Aparelho)</label>
         <div style="display:flex; gap:8px;">
           <input type="text" class="form-control" readonly value="\${window.location.origin}/survey/public/${survey.id}" style="font-size:13px; background:var(--bg-secondary);">
@@ -526,14 +536,21 @@ function renderQuestionCard(q, num) {
         <div class="options-container" id="opts-${q.id}">
           ${q.options.map(o => `
             <div class="option-row" id="opt-row-${o.id}">
+              ${o.image_url ? `<img src="${o.image_url}" style="width:24px;height:24px;border-radius:4px;object-fit:cover;"/>` : ''}
               <span class="badge badge-gray" style="flex:1">○ ${escapeHtml(o.option_text)}</span>
               <button class="btn btn-danger btn-sm btn-delete-option" data-oid="${o.id}" data-qid="${q.id}">✕</button>
             </div>
           `).join('')}
 
-          <div class="option-row mt-2">
-            <input type="text" class="form-control" id="new-opt-${q.id}" placeholder="Nova opção..." style="flex:1">
-            <button class="btn btn-secondary btn-sm btn-add-option" data-qid="${q.id}">+ Adicionar</button>
+          <div class="option-row mt-2" style="flex-direction:column; align-items:stretch; gap:8px;">
+            <div style="display:flex; gap:8px;">
+              <input type="text" class="form-control" id="new-opt-${q.id}" placeholder="Nova opção..." style="flex:1">
+            </div>
+            <div style="display:flex; gap:8px; align-items:center;">
+              <input type="text" class="form-control" id="new-opt-img-${q.id}" placeholder="URL da Foto" style="flex:1; font-size:12px;">
+              <input type="file" id="new-opt-file-${q.id}" accept="image/*" style="font-size:11px; max-width: 140px;">
+              <button class="btn btn-secondary btn-sm btn-add-option" data-qid="${q.id}">+ Adicionar</button>
+            </div>
           </div>
         </div>
       ` : ''}
@@ -602,18 +619,127 @@ async function deleteQuestion(id) {
   if (ok) { toast('Removido', 'Pergunta excluída.', 'success'); editSurvey(currentSurvey.id); }
 }
 
+async function saveTheme(surveyId) {
+  const bg_color = document.getElementById('theme-bg').value;
+  const primary_color = document.getElementById('theme-primary').value;
+  const { ok, data } = await api(`/api/admin/surveys/${surveyId}`, { 
+    method:'PUT', 
+    body: { theme_config: { bg_color, primary_color } } 
+  });
+  if (ok) {
+    toast('Sucesso', 'Tema salvo com sucesso!', 'success');
+    editSurvey(surveyId);
+  } else {
+    toast('Erro', data.error || 'Falha ao salvar tema.', 'error');
+  }
+}
+
+async function uploadImage(file) {
+  const formData = new FormData();
+  formData.append('file', file);
+  const res = await fetch('/api/admin/upload', {
+    method: 'POST',
+    headers: { 'Authorization': `Bearer ${token}` },
+    body: formData
+  });
+  const data = await res.json();
+  if (!res.ok) throw new Error(data.error || 'Erro no upload');
+  return data.url;
+}
+
 async function addOption(questionId) {
   const input = document.getElementById(`new-opt-${questionId}`);
+  const inputImg = document.getElementById(`new-opt-img-${questionId}`);
+  const inputFile = document.getElementById(`new-opt-file-${questionId}`);
   const option_text = input.value.trim();
   if (!option_text) return;
-  const { ok, data } = await api(`/api/admin/questions/${questionId}/options`, { method:'POST', body:{ option_text } });
+
+  let image_url = inputImg.value.trim() || null;
+  if (inputFile.files.length > 0) {
+    try {
+      const btn = document.querySelector(`.btn-add-option[data-qid="${questionId}"]`);
+      btn.disabled = true;
+      btn.textContent = '...';
+      image_url = await uploadImage(inputFile.files[0]);
+    } catch(err) {
+      const btn = document.querySelector(`.btn-add-option[data-qid="${questionId}"]`);
+      btn.disabled = false;
+      btn.textContent = '+ Adicionar';
+      return toast('Erro', err.message, 'error');
+    }
+  }
+
+  const { ok, data } = await api(`/api/admin/questions/${questionId}/options`, { method:'POST', body:{ option_text, image_url } });
   if (ok) {
     input.value = '';
+    inputImg.value = '';
+    inputFile.value = '';
     toast('Adicionado', 'Opção criada.', 'success');
     editSurvey(currentSurvey.id);
   } else {
     toast('Erro', data.error, 'error');
+    const btn = document.querySelector(`.btn-add-option[data-qid="${questionId}"]`);
+    if(btn) { btn.disabled = false; btn.textContent = '+ Adicionar'; }
   }
+}
+
+function openDemographicsModal(surveyId) {
+  const templates = [
+    { id: 'gender', label: 'Gênero (Masculino, Feminino, Prefiro não informar)', q: 'Gênero', options: ['Masculino', 'Feminino', 'Prefiro não informar'] },
+    { id: 'age', label: 'Idade (Faixas etárias)', q: 'Idade', options: ['16 a 24 anos', '25 a 34 anos', '35 a 44 anos', '45 a 59 anos', '60 anos ou mais'] },
+    { id: 'education', label: 'Escolaridade', q: 'Escolaridade', options: ['Até Fundamental Completo', 'Até Médio Completo', 'Superior Incompleto ou Mais'] },
+    { id: 'income', label: 'Renda', q: 'Renda Familiar', options: ['Até 2 Salários Mínimos', 'De 2 a 5 Salários Mínimos', 'Mais de 5 Salários Mínimos'] }
+  ];
+
+  openModal('Adicionar Perfil de Amostra', `
+    <form id="demographics-form">
+      <p class="text-xs text-muted mb-4">Selecione as perguntas de perfil que deseja adicionar à pesquisa:</p>
+      <div class="form-group" style="display:flex; flex-direction:column; gap:10px;">
+        ${templates.map(t => `
+          <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+            <input type="checkbox" value="${t.id}" class="demo-checkbox" style="width:16px;height:16px;">
+            <span style="font-size:14px; color:var(--text-primary);">${t.label}</span>
+          </label>
+        `).join('')}
+      </div>
+      <button type="submit" class="btn btn-primary w-full mt-4" id="btn-submit-demographics">Adicionar Selecionadas</button>
+    </form>
+  `);
+
+  document.getElementById('demographics-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-submit-demographics');
+    
+    const selectedIds = Array.from(document.querySelectorAll('.demo-checkbox:checked')).map(cb => cb.value);
+    if (selectedIds.length === 0) {
+      return toast('Aviso', 'Selecione pelo menos uma opção.', 'error');
+    }
+
+    btn.disabled = true;
+    btn.textContent = 'Adicionando...';
+    
+    const selectedTemplates = templates.filter(t => selectedIds.includes(t.id));
+    
+    let hasError = false;
+    for (const t of selectedTemplates) {
+      const payload = {
+        question_text: t.q,
+        type: 'single_choice',
+        options: t.options.map(o => ({ option_text: o }))
+      };
+      const { ok } = await api(`/api/admin/surveys/${surveyId}/questions`, { method: 'POST', body: payload });
+      if (!ok) hasError = true;
+    }
+
+    if (hasError) {
+      toast('Atenção', 'Ocorreu um erro ao adicionar algumas perguntas.', 'error');
+    } else {
+      toast('Sucesso', 'Perguntas demográficas adicionadas!', 'success');
+    }
+    
+    closeModal();
+    editSurvey(surveyId);
+  });
 }
 
 async function deleteOption(optId, questionId) {
@@ -1277,6 +1403,7 @@ async function loadResults() {
 
   const { survey, total_answered, dispatch_stats, questions } = data;
   const total_dispatched = dispatch_stats.reduce((a, r) => a + parseInt(r.count), 0);
+  const marginOfError = total_answered > 0 ? (1.96 * Math.sqrt(0.25 / total_answered) * 100).toFixed(1) : 0;
 
   el.innerHTML = `
     <div class="stats-grid mb-4">
@@ -1294,6 +1421,11 @@ async function loadResults() {
         <div class="stat-icon" style="background:rgba(245,158,11,0.15)">📈</div>
         <div class="stat-value">${total_dispatched > 0 ? ((total_answered / total_dispatched) * 100).toFixed(1) : 0}%</div>
         <div class="stat-label">Taxa de Resposta</div>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon" style="background:rgba(6,182,212,0.15)">🎯</div>
+        <div class="stat-value">±${marginOfError}%</div>
+        <div class="stat-label">Margem de Erro (95%)</div>
       </div>
     </div>
 

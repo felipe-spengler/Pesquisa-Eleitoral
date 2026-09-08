@@ -146,7 +146,7 @@ router.get('/:token', async (req, res) => {
     const { token } = req.params;
 
     const tokenRes = await query(
-      `SELECT dt.*, s.title AS survey_title, s.is_active
+      `SELECT dt.*, s.title AS survey_title, s.is_active, s.theme_config
        FROM dispatch_tokens dt
        JOIN surveys s ON s.id = dt.survey_id
        WHERE dt.token = $1`,

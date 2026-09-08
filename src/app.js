@@ -103,6 +103,7 @@ app.use(cookieParser());
 // Arquivos Estáticos (Frontend)
 // =============================================
 app.use(express.static(path.join(__dirname, '..', 'public')));
+app.use('/uploads', express.static(path.join(__dirname, '..', 'public', 'uploads')));
 
 // =============================================
 // Health Check

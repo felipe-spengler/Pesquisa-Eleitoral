@@ -210,6 +210,16 @@ async function loadSurvey() {
 
     surveyData = data;
     
+    // Configura o tema customizado
+    if (surveyData.survey.theme_config) {
+      const theme = surveyData.survey.theme_config;
+      if (theme.bg_color) document.documentElement.style.setProperty('--bg', theme.bg_color);
+      if (theme.primary_color) {
+        document.documentElement.style.setProperty('--primary', theme.primary_color);
+        document.documentElement.style.setProperty('--accent', theme.primary_color);
+      }
+    }
+
     // Inicializa respostas
     surveyData.questions.forEach(q => {
       answers[q.id] = { option_ids: [], text_answer: '' };
@@ -276,8 +286,9 @@ function renderSurvey() {
     const inputType = currentQuestion.type === 'multiple_choice' ? 'checkbox' : 'radio';
     const optionClass = currentQuestion.type === 'multiple_choice' ? 'checkbox-type' : '';
     
+    const hasImages = currentQuestion.options.some(o => o.image_url);
     const listWrapper = document.createElement('div');
-    listWrapper.className = 'options-list';
+    listWrapper.className = hasImages ? 'options-grid' : 'options-list';
     
     currentQuestion.options.forEach(o => {
       const isSelected = answers[currentQuestion.id].option_ids.includes(o.id);
@@ -302,8 +313,26 @@ function renderSurvey() {
       optSpan.textContent = o.option_text;
 
       label.appendChild(input);
-      label.appendChild(checkDiv);
-      label.appendChild(optSpan);
+
+      if (o.image_url) {
+        label.classList.add('has-image');
+        const imgWrapper = document.createElement('div');
+        imgWrapper.className = 'option-image-wrapper';
+        const img = document.createElement('img');
+        img.src = o.image_url;
+        img.className = 'option-image';
+        imgWrapper.appendChild(img);
+        label.appendChild(imgWrapper);
+        
+        const textCheckWrapper = document.createElement('div');
+        textCheckWrapper.className = 'option-content-bottom';
+        textCheckWrapper.appendChild(checkDiv);
+        textCheckWrapper.appendChild(optSpan);
+        label.appendChild(textCheckWrapper);
+      } else {
+        label.appendChild(checkDiv);
+        label.appendChild(optSpan);
+      }
 
       listWrapper.appendChild(label);
     });
