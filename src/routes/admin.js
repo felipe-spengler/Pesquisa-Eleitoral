@@ -222,6 +222,26 @@ router.post('/questions/:questionId/options', async (req, res) => {
   }
 });
 
+// PUT /api/admin/options/:id
+router.put('/options/:id', async (req, res) => {
+  try {
+    const { id } = req.params;
+    const { option_text, image_url } = req.body;
+    const result = await query(
+      `UPDATE options SET 
+        option_text = COALESCE($1, option_text), 
+        image_url = $2 
+       WHERE id = $3 RETURNING *`,
+      [option_text, image_url !== undefined ? image_url : null, id]
+    );
+    if (!result.rows[0]) return res.status(404).json({ error: 'Opção não encontrada.' });
+    return res.json(result.rows[0]);
+  } catch (err) {
+    console.error('[Admin] PUT options/:id:', err.message);
+    return res.status(500).json({ error: 'Erro ao atualizar opção.' });
+  }
+});
+
 // DELETE /api/admin/options/:id
 router.delete('/options/:id', async (req, res) => {
   try {

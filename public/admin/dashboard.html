@@ -509,14 +509,20 @@ function renderSurveyEditor(survey) {
   }
 
   // Bind question card actions (delete question, delete option, add option)
-  document.getElementById('page-content').addEventListener('click', (e) => {
-    const delQ = e.target.closest('.btn-delete-question');
-    if (delQ) { deleteQuestion(Number(delQ.dataset.qid)); return; }
-    const delO = e.target.closest('.btn-delete-option');
-    if (delO) { deleteOption(Number(delO.dataset.oid), Number(delO.dataset.qid)); return; }
-    const addO = e.target.closest('.btn-add-option');
-    if (addO) { addOption(Number(addO.dataset.qid)); return; }
-  });
+  const pageContent = document.getElementById('page-content');
+  if (!pageContent._hasSurveyClickListener) {
+    pageContent._hasSurveyClickListener = true;
+    pageContent.addEventListener('click', (e) => {
+      const delQ = e.target.closest('.btn-delete-question');
+      if (delQ) { deleteQuestion(Number(delQ.dataset.qid)); return; }
+      const delO = e.target.closest('.btn-delete-option');
+      if (delO) { deleteOption(Number(delO.dataset.oid), Number(delO.dataset.qid)); return; }
+      const editO = e.target.closest('.btn-edit-option');
+      if (editO) { editOptionModal(Number(editO.dataset.oid), editO.dataset.text, editO.dataset.img); return; }
+      const addO = e.target.closest('.btn-add-option');
+      if (addO) { addOption(Number(addO.dataset.qid)); return; }
+    });
+  }
 }
 
 function renderQuestionCard(q, num) {
@@ -538,6 +544,7 @@ function renderQuestionCard(q, num) {
             <div class="option-row" id="opt-row-${o.id}">
               ${o.image_url ? `<img src="${o.image_url}" style="width:24px;height:24px;border-radius:4px;object-fit:cover;"/>` : ''}
               <span class="badge badge-gray" style="flex:1">○ ${escapeHtml(o.option_text)}</span>
+              <button class="btn btn-secondary btn-sm btn-edit-option" data-oid="${o.id}" data-text="${escapeHtml(o.option_text)}" data-img="${o.image_url || ''}">✏️</button>
               <button class="btn btn-danger btn-sm btn-delete-option" data-oid="${o.id}" data-qid="${q.id}">✕</button>
             </div>
           `).join('')}
@@ -681,6 +688,62 @@ async function addOption(questionId) {
     const btn = document.querySelector(`.btn-add-option[data-qid="${questionId}"]`);
     if(btn) { btn.disabled = false; btn.textContent = '+ Adicionar'; }
   }
+}
+
+function editOptionModal(optId, currentText, currentImg) {
+  openModal('Editar Opção', `
+    <form id="edit-option-form">
+      <div class="form-group">
+        <label class="form-label">Texto da Opção</label>
+        <input type="text" class="form-control" id="edit-opt-text" value="${escapeHtml(currentText)}" required>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Nova Foto</label>
+        <div style="display:flex; gap:8px; align-items:center;">
+          <input type="text" class="form-control" id="edit-opt-img" placeholder="URL da Foto (opcional)" value="${escapeHtml(currentImg)}" style="flex:1;">
+          <input type="file" id="edit-opt-file" accept="image/*" style="max-width: 140px;">
+        </div>
+      </div>
+      <button type="submit" class="btn btn-primary w-full mt-4" id="btn-save-edit-opt">Salvar Alterações</button>
+    </form>
+  `);
+
+  document.getElementById('edit-option-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-edit-opt');
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    const newText = document.getElementById('edit-opt-text').value.trim();
+    let newImg = document.getElementById('edit-opt-img').value.trim() || null;
+    const fileInput = document.getElementById('edit-opt-file');
+
+    if (fileInput.files.length > 0) {
+      try {
+        newImg = await uploadImage(fileInput.files[0]);
+      } catch (err) {
+        toast('Erro', err.message, 'error');
+        btn.disabled = false;
+        btn.textContent = 'Salvar Alterações';
+        return;
+      }
+    }
+
+    const { ok, data } = await api(\`/api/admin/options/\${optId}\`, {
+      method: 'PUT',
+      body: { option_text: newText, image_url: newImg }
+    });
+
+    if (ok) {
+      toast('Sucesso', 'Opção atualizada.', 'success');
+      closeModal();
+      editSurvey(currentSurvey.id);
+    } else {
+      toast('Erro', data.error || 'Falha ao atualizar opção.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Salvar Alterações';
+    }
+  });
 }
 
 function openDemographicsModal(surveyId) {
