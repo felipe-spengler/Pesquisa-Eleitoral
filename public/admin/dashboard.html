@@ -729,7 +729,7 @@ function editOptionModal(optId, currentText, currentImg) {
       }
     }
 
-    const { ok, data } = await api(\`/api/admin/options/\${optId}\`, {
+    const { ok, data } = await api(`/api/admin/options/${optId}`, {
       method: 'PUT',
       body: { option_text: newText, image_url: newImg }
     });
