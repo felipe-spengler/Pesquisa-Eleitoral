@@ -26,7 +26,7 @@ app.use(
     contentSecurityPolicy: {
       directives: {
         defaultSrc: ["'self'"],
-        scriptSrc: ["'self'", "'unsafe-inline'"],   // inline scripts no frontend existente
+        scriptSrc: ["'self'", "'unsafe-inline'", "https://openfpcdn.io"],
         scriptSrcAttr: ["'self'", "'unsafe-inline'"], // permite event handlers inline (ex: injetados via extensões)
         styleSrc: ["'self'", "'unsafe-inline'", 'https://fonts.googleapis.com'],
         fontSrc: ["'self'", 'https://fonts.gstatic.com'],

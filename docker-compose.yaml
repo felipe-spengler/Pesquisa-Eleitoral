@@ -45,6 +45,7 @@ services:
       - coolify
     volumes:
       - ./scripts:/app/scripts:ro  # Seed script acessível
+      - uploads_data:/app/public/uploads # Persistência de imagens
 
   # --------------------------------------------------
   # PostgreSQL 16
@@ -75,6 +76,8 @@ services:
 # ==================================================
 volumes:
   postgres_data:
+    driver: local
+  uploads_data:
     driver: local
 
 # ==================================================

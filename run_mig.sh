@@ -1,1 +1,1 @@
-docker exec app-laxangcihiiy89yw2e1jt2sb-224734834349 node -e "const fs = require('fs'); const { pool } = require('./src/config/db.js'); async function run() { try { const sql = fs.readFileSync('./migrations/005_survey_slugs.sql', 'utf8'); await pool.query(sql); console.log('Migration 005 applied successfully.'); process.exit(0); } catch (err) { console.error('Migration failed:', err); process.exit(1); } } run();"
+docker exec app-laxangcihiiy89yw2e1jt2sb-224734834349 node scripts/apply-migration.js
