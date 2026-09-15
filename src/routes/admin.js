@@ -106,7 +106,7 @@ router.put('/surveys/:id', async (req, res) => {
     }
     const result = await query(
       'UPDATE surveys SET title = COALESCE($1, title), slug = COALESCE(slug, $2), is_active = COALESCE($3, is_active), theme_config = COALESCE($4, theme_config) WHERE id = $5 RETURNING *',
-      [title, slug, is_active, theme_config, id]
+      [title !== undefined ? title : null, slug, is_active !== undefined ? is_active : null, theme_config !== undefined ? theme_config : null, id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Pesquisa não encontrada.' });
     return res.json(result.rows[0]);
