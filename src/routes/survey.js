@@ -136,7 +136,7 @@ router.post('/public/:id/submit', async (req, res) => {
   } catch (err) {
     await client.query('ROLLBACK');
     console.error('[Survey] POST /public/:id/submit:', err.message);
-    return res.status(500).json({ error: 'Erro ao registrar resposta.' });
+    return res.status(500).json({ error: 'Erro ao registrar resposta. Detalhe: ' + err.message });
   } finally {
     client.release();
   }

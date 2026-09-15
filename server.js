@@ -10,10 +10,14 @@ const PORT = parseInt(process.env.PORT, 10) || 4444;
 async function runMigrationsAndSeed() {
   try {
     console.log('[DB] Executando migrações...');
-    const migrationPath = path.join(__dirname, 'migrations', '001_init.sql');
-    const sql = fs.readFileSync(migrationPath, 'utf-8');
-    await pool.query(sql);
-    console.log('[DB] ✅ Migrações executadas com sucesso.');
+    const migrationsDir = path.join(__dirname, 'migrations');
+    const files = fs.readdirSync(migrationsDir).filter(f => f.endsWith('.sql')).sort();
+    for (const file of files) {
+      console.log(`[DB] Running migration: ${file}`);
+      const sql = fs.readFileSync(path.join(migrationsDir, file), 'utf-8');
+      await pool.query(sql);
+    }
+    console.log('[DB] ✅ Todas as migrações foram executadas com sucesso.');
 
     // Roda o seed de forma automática se a tabela de usuários existir
     console.log('[DB] Verificando semente (seed) do admin...');
