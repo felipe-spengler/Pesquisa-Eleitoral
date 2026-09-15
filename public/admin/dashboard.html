@@ -480,12 +480,13 @@ function renderSurveyEditor(survey) {
         <div style="display:flex; gap:16px; margin-bottom: 12px; align-items:flex-end; flex-wrap:wrap;">
           <div><label class="text-xs" style="display:block;margin-bottom:4px;">Cor Fundo</label><input type="color" id="theme-bg" value="${survey.theme_config?.bg_color || '#04070f'}" style="width:40px;height:40px;padding:0;border:none;cursor:pointer;"></div>
           <div><label class="text-xs" style="display:block;margin-bottom:4px;">Cor Primária</label><input type="color" id="theme-primary" value="${survey.theme_config?.primary_color || '#6366f1'}" style="width:40px;height:40px;padding:0;border:none;cursor:pointer;"></div>
+          <div><label class="text-xs" style="display:block;margin-bottom:4px;">Cor Secundária</label><input type="color" id="theme-secondary" value="${survey.theme_config?.secondary_color || '#8b5cf6'}" style="width:40px;height:40px;padding:0;border:none;cursor:pointer;"></div>
           <button class="btn btn-secondary btn-sm" onclick="saveTheme(${survey.id})" style="height:40px;">Salvar Tema</button>
         </div>
         <label class="form-label text-xs">Link Público (Voto Único por Aparelho)</label>
         <div style="display:flex; gap:8px;">
-          <input type="text" class="form-control" readonly value="\${window.location.origin}/survey/public/${survey.id}" style="font-size:13px; background:var(--bg-secondary);">
-          <button class="btn btn-secondary" onclick="navigator.clipboard.writeText('\\${window.location.origin}/survey/public/${survey.id}'); toast('Copiado', 'Link copiado para a área de transferência', 'success');">Copiar Link</button>
+          <input type="text" class="form-control" readonly value="\${window.location.origin}/pesquisa/public/${survey.slug || survey.id}" style="font-size:13px; background:var(--bg-secondary);">
+          <button class="btn btn-secondary" onclick="navigator.clipboard.writeText('\\${window.location.origin}/pesquisa/public/${survey.slug || survey.id}'); toast('Copiado', 'Link copiado para a área de transferência', 'success');">Copiar Link</button>
         </div>
       </div>
     </div>
@@ -521,6 +522,10 @@ function renderSurveyEditor(survey) {
       if (editO) { editOptionModal(Number(editO.dataset.oid), editO.dataset.text, editO.dataset.img); return; }
       const addO = e.target.closest('.btn-add-option');
       if (addO) { addOption(Number(addO.dataset.qid)); return; }
+      const moveUp = e.target.closest('.btn-move-up');
+      if (moveUp) { reorderQuestion(Number(moveUp.dataset.qid), Number(moveUp.dataset.idx), -1); return; }
+      const moveDown = e.target.closest('.btn-move-down');
+      if (moveDown) { reorderQuestion(Number(moveDown.dataset.qid), Number(moveDown.dataset.idx), 1); return; }
     });
   }
 }
@@ -535,7 +540,11 @@ function renderQuestionCard(q, num) {
           <span class="badge badge-info">${typeLabels[q.type]}</span>
           <span class="text-muted text-xs" style="margin-left:8px">Pergunta ${num}</span>
         </div>
-        <button class="btn btn-danger btn-sm btn-delete-question" data-qid="${q.id}">Remover</button>
+        <div>
+          <button class="btn btn-secondary btn-sm btn-move-up" data-qid="${q.id}" data-idx="${num-1}">⬆️</button>
+          <button class="btn btn-secondary btn-sm btn-move-down" data-qid="${q.id}" data-idx="${num-1}">⬇️</button>
+          <button class="btn btn-danger btn-sm btn-delete-question" data-qid="${q.id}">Remover</button>
+        </div>
       </div>
       <p style="font-weight:600;color:var(--text-primary);margin-bottom:${hasOptions ? '16px' : '0'}">${escapeHtml(q.question_text)}</p>
       ${hasOptions ? `
@@ -629,9 +638,10 @@ async function deleteQuestion(id) {
 async function saveTheme(surveyId) {
   const bg_color = document.getElementById('theme-bg').value;
   const primary_color = document.getElementById('theme-primary').value;
+  const secondary_color = document.getElementById('theme-secondary').value;
   const { ok, data } = await api(`/api/admin/surveys/${surveyId}`, { 
     method:'PUT', 
-    body: { theme_config: { bg_color, primary_color } } 
+    body: { theme_config: { bg_color, primary_color, secondary_color } } 
   });
   if (ok) {
     toast('Sucesso', 'Tema salvo com sucesso!', 'success');
@@ -639,6 +649,20 @@ async function saveTheme(surveyId) {
   } else {
     toast('Erro', data.error || 'Falha ao salvar tema.', 'error');
   }
+}
+
+async function reorderQuestion(qId, currentIndex, direction) {
+  const newIndex = currentIndex + direction;
+  if (newIndex < 0 || newIndex >= currentSurvey.questions.length) return;
+  
+  const currentQ = currentSurvey.questions[currentIndex];
+  const targetQ = currentSurvey.questions[newIndex];
+  
+  // Use sequential order indices or swap them
+  await api(`/api/admin/questions/${currentQ.id}`, { method: 'PUT', body: { order_index: newIndex } });
+  await api(`/api/admin/questions/${targetQ.id}`, { method: 'PUT', body: { order_index: currentIndex } });
+  
+  editSurvey(currentSurvey.id);
 }
 
 async function uploadImage(file) {

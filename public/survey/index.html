@@ -139,12 +139,12 @@ function getToken() {
 }
 
 function isPublicLink() {
-  return window.location.pathname.includes('/survey/public/');
+  return window.location.pathname.includes('/survey/public/') || window.location.pathname.includes('/pesquisa/public/');
 }
 
 // FingerprintJS promise initialization (only used if public)
 const fpPromise = isPublicLink() 
-  ? import('https://openfpcdn.io/fingerprintjs/v4').then(FingerprintJS => FingerprintJS.load())
+  ? import('https://openfpcdn.io/fingerprintjs/v4').then(FingerprintJS => FingerprintJS.load()).catch(err => null)
   : null;
 
 function showScreen(id) {
@@ -216,6 +216,10 @@ async function loadSurvey() {
       if (theme.bg_color) document.documentElement.style.setProperty('--bg', theme.bg_color);
       if (theme.primary_color) {
         document.documentElement.style.setProperty('--primary', theme.primary_color);
+      }
+      if (theme.secondary_color) {
+        document.documentElement.style.setProperty('--accent', theme.secondary_color);
+      } else if (theme.primary_color) {
         document.documentElement.style.setProperty('--accent', theme.primary_color);
       }
     }
@@ -485,9 +489,23 @@ async function submitSurvey() {
   try {
     let visitorId = null;
     if (isPublicLink()) {
-      const fp = await fpPromise;
-      const result = await fp.get();
-      visitorId = result.visitorId;
+      try {
+        const fp = await fpPromise;
+        if (fp) {
+          const result = await fp.get();
+          visitorId = result.visitorId;
+        }
+      } catch (fpErr) {
+        console.warn('FingerprintJS failed:', fpErr);
+      }
+      // Fallback in case it's blocked by adblock/tracking protection
+      if (!visitorId) {
+        visitorId = localStorage.getItem('survey_fallback_vid');
+        if (!visitorId) {
+          visitorId = 'fb-' + Date.now() + '-' + Math.random().toString(36).substring(2);
+          localStorage.setItem('survey_fallback_vid', visitorId);
+        }
+      }
     }
 
     const url = isPublicLink() ? `/api/survey/public/${surveyToken}/submit` : `/api/survey/${surveyToken}/submit`;

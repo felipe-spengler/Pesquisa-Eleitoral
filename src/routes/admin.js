@@ -82,9 +82,10 @@ router.post('/surveys', async (req, res) => {
     if (typeof title !== 'string' || title.trim() === '') {
       return res.status(400).json({ error: 'Título é obrigatório e deve ser uma string.' });
     }
+    const slug = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now().toString().slice(-4);
     const result = await query(
-      'INSERT INTO surveys (title, is_active, theme_config) VALUES ($1, $2, $3) RETURNING *',
-      [title.trim(), is_active, theme_config]
+      'INSERT INTO surveys (title, slug, is_active, theme_config) VALUES ($1, $2, $3, $4) RETURNING *',
+      [title.trim(), slug, is_active, theme_config]
     );
 
     return res.status(201).json(result.rows[0]);
@@ -99,9 +100,13 @@ router.put('/surveys/:id', async (req, res) => {
   try {
     const { id } = req.params;
     const { title, is_active, theme_config } = req.body;
+    let slug = null;
+    if (title) {
+        slug = title.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now().toString().slice(-4);
+    }
     const result = await query(
-      'UPDATE surveys SET title = COALESCE($1, title), is_active = COALESCE($2, is_active), theme_config = COALESCE($3, theme_config) WHERE id = $4 RETURNING *',
-      [title, is_active, theme_config, id]
+      'UPDATE surveys SET title = COALESCE($1, title), slug = COALESCE(slug, $2), is_active = COALESCE($3, is_active), theme_config = COALESCE($4, theme_config) WHERE id = $5 RETURNING *',
+      [title, slug, is_active, theme_config, id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Pesquisa não encontrada.' });
     return res.json(result.rows[0]);

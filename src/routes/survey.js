@@ -9,8 +9,9 @@ router.get('/public/:id', async (req, res) => {
   try {
     const { id } = req.params;
 
+    const isId = !isNaN(id);
     const surveyRes = await query(
-      `SELECT * FROM surveys WHERE id = $1`,
+      `SELECT * FROM surveys WHERE ${isId ? 'id = $1' : 'slug = $1'}`,
       [id]
     );
 
@@ -81,8 +82,9 @@ router.post('/public/:id/submit', async (req, res) => {
 
     await client.query('BEGIN');
 
+    const isId = !isNaN(id);
     const surveyRes = await client.query(
-      `SELECT * FROM surveys WHERE id = $1 FOR SHARE`,
+      `SELECT * FROM surveys WHERE ${isId ? 'id = $1' : 'slug = $1'} FOR SHARE`,
       [id]
     );
 
@@ -101,7 +103,7 @@ router.post('/public/:id/submit', async (req, res) => {
     // Verificar se visitorId já votou
     const checkRes = await client.query(
       `SELECT id FROM responses WHERE survey_id = $1 AND visitor_id = $2 LIMIT 1`,
-      [id, visitorId]
+      [survey.id, visitorId]
     );
 
     if (checkRes.rows.length > 0) {
@@ -121,7 +123,7 @@ router.post('/public/:id/submit', async (req, res) => {
       await client.query(
         `INSERT INTO responses (survey_id, question_id, option_id, text_answer, visitor_id, ip_address)
          VALUES ($1, $2, $3, $4, $5, $6)`,
-        [id, question_id, option_id, text_answer, visitorId, clientIp]
+        [survey.id, question_id, option_id, text_answer, visitorId, clientIp]
       );
     }
 
