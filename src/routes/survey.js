@@ -55,6 +55,7 @@ router.get('/public/:id', async (req, res) => {
       survey: {
         id: survey.id,
         title: survey.title,
+        theme_config: survey.theme_config,
       },
       questions,
     });
@@ -202,6 +203,7 @@ router.get('/:token', async (req, res) => {
       survey: {
         id: tokenRow.survey_id,
         title: tokenRow.survey_title,
+        theme_config: tokenRow.theme_config,
       },
       questions,
     });

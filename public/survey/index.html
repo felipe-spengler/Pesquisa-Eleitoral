@@ -214,9 +214,48 @@ async function loadSurvey() {
     // Configura o tema customizado
     if (surveyData.survey.theme_config) {
       const theme = surveyData.survey.theme_config;
-      if (theme.bg_color) document.documentElement.style.setProperty('--bg', theme.bg_color);
+
+      function hexToRgb(hex) {
+        let c = hex.replace('#', '');
+        if (c.length === 3) c = c.split('').map(x => x + x).join('');
+        const num = parseInt(c, 16);
+        return [num >> 16, (num >> 8) & 255, num & 255];
+      }
+
+      function getLuminance(r, g, b) {
+        const a = [r, g, b].map(v => {
+            v /= 255;
+            return v <= 0.03928 ? v / 12.92 : Math.pow((v + 0.055) / 1.055, 2.4);
+        });
+        return a[0] * 0.2126 + a[1] * 0.7152 + a[2] * 0.0722;
+      }
+
+      if (theme.bg_color) {
+        document.documentElement.style.setProperty('--bg', theme.bg_color);
+        const [r, g, b] = hexToRgb(theme.bg_color);
+        const lum = getLuminance(r, g, b);
+
+        if (lum > 0.5) {
+          // Light Theme
+          document.documentElement.style.setProperty('--surface', '#ffffff');
+          document.documentElement.style.setProperty('--card', '#f8fafc');
+          document.documentElement.style.setProperty('--border', '#e2e8f0');
+          document.documentElement.style.setProperty('--border-2', '#cbd5e1');
+          document.documentElement.style.setProperty('--text', '#0f172a');
+          document.documentElement.style.setProperty('--text-2', '#334155');
+          document.documentElement.style.setProperty('--text-3', '#64748b');
+          document.documentElement.style.setProperty('--header-bg', 'rgba(255, 255, 255, 0.92)');
+          document.documentElement.style.setProperty('--nav-bg', 'rgba(255, 255, 255, 0.97)');
+          document.documentElement.style.setProperty('--card-alpha', 'rgba(255, 255, 255, 0.7)');
+          document.documentElement.style.setProperty('--card-alpha-hover', 'rgba(255, 255, 255, 0.9)');
+          document.documentElement.style.setProperty('--state-bg', 'rgba(255, 255, 255, 0.85)');
+          document.documentElement.style.setProperty('--footer-bg', 'rgba(255, 255, 255, 0.6)');
+        }
+      }
       if (theme.primary_color) {
         document.documentElement.style.setProperty('--primary', theme.primary_color);
+        const [r, g, b] = hexToRgb(theme.primary_color);
+        document.documentElement.style.setProperty('--primary-rgb', `${r}, ${g}, ${b}`);
       }
       if (theme.secondary_color) {
         document.documentElement.style.setProperty('--accent', theme.secondary_color);
