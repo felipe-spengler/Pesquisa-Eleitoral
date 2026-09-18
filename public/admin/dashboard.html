@@ -271,9 +271,10 @@ async function renderOverview() {
         <td style="font-weight:600;color:var(--text-primary)">${escapeHtml(s.title)}</td>
         <td><span class="badge ${s.is_active ? 'badge-success' : 'badge-gray'}">${s.is_active ? '● Ativa' : '○ Inativa'}</span></td>
         <td>${new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
-        <td>
-          <button class="btn btn-secondary btn-sm btn-edit-survey" data-id="${Number(s.id)}">Editar</button>
-          <button class="btn btn-secondary btn-sm btn-results-survey" style="margin-left:4px" data-id="${Number(s.id)}">Resultados</button>
+        <td style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
+          <button class="btn btn-secondary btn-sm btn-edit-survey" data-id="${Number(s.id)}">✏️ Editar</button>
+          <button class="btn btn-secondary btn-sm btn-duplicate-survey" data-id="${Number(s.id)}">📋 Duplicar</button>
+          <button class="btn btn-secondary btn-sm btn-results-survey" data-id="${Number(s.id)}">📊 Resultados</button>
         </td>
       </tr>
     `).join('');
@@ -327,6 +328,9 @@ async function renderOverview() {
 function bindOverviewActions() {
   document.querySelectorAll('.btn-edit-survey').forEach(btn => {
     btn.addEventListener('click', () => editSurvey(Number(btn.dataset.id)));
+  });
+  document.querySelectorAll('.btn-duplicate-survey').forEach(btn => {
+    btn.addEventListener('click', () => duplicateSurvey(Number(btn.dataset.id)));
   });
   document.querySelectorAll('.btn-results-survey').forEach(btn => {
     btn.addEventListener('click', () => viewResults(Number(btn.dataset.id)));
@@ -385,11 +389,11 @@ function surveyRow(s) {
       <td style="font-weight:600;color:var(--text-primary)">${escapeHtml(s.title)}</td>
       <td><span class="badge ${s.is_active ? 'badge-success' : 'badge-gray'}">${s.is_active ? '● Ativa' : '○ Inativa'}</span></td>
       <td>${new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
-      <td>
+      <td style="display:flex; flex-wrap:wrap; gap:6px; align-items:center;">
         <button class="btn btn-secondary btn-sm btn-survey-edit" data-id="${safeId}">✏️ Editar</button>
-        <button class="btn btn-secondary btn-sm btn-survey-duplicate" style="margin-left:4px" data-id="${safeId}">📋 Duplicar</button>
-        <button class="btn btn-secondary btn-sm btn-survey-results" style="margin-left:4px" data-id="${safeId}">📊 Resultados</button>
-        <button class="btn btn-danger btn-sm btn-survey-delete" style="margin-left:4px" data-id="${safeId}">🗑️ Excluir</button>
+        <button class="btn btn-secondary btn-sm btn-survey-duplicate" data-id="${safeId}">📋 Duplicar</button>
+        <button class="btn btn-secondary btn-sm btn-survey-results" data-id="${safeId}">📊 Resultados</button>
+        <button class="btn btn-danger btn-sm btn-survey-delete" data-id="${safeId}">🗑️ Excluir</button>
       </td>
     </tr>
   `;
