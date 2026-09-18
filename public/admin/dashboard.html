@@ -387,6 +387,7 @@ function surveyRow(s) {
       <td>${new Date(s.created_at).toLocaleDateString('pt-BR')}</td>
       <td>
         <button class="btn btn-secondary btn-sm btn-survey-edit" data-id="${safeId}">✏️ Editar</button>
+        <button class="btn btn-secondary btn-sm btn-survey-duplicate" style="margin-left:4px" data-id="${safeId}">📋 Duplicar</button>
         <button class="btn btn-secondary btn-sm btn-survey-results" style="margin-left:4px" data-id="${safeId}">📊 Resultados</button>
         <button class="btn btn-danger btn-sm btn-survey-delete" style="margin-left:4px" data-id="${safeId}">🗑️ Excluir</button>
       </td>
@@ -398,12 +399,32 @@ function bindSurveyActions() {
   document.querySelectorAll('.btn-survey-edit').forEach(btn => {
     btn.addEventListener('click', () => editSurvey(Number(btn.dataset.id)));
   });
+  document.querySelectorAll('.btn-survey-duplicate').forEach(btn => {
+    btn.addEventListener('click', () => duplicateSurvey(Number(btn.dataset.id)));
+  });
   document.querySelectorAll('.btn-survey-results').forEach(btn => {
     btn.addEventListener('click', () => viewResults(Number(btn.dataset.id)));
   });
   document.querySelectorAll('.btn-survey-delete').forEach(btn => {
     btn.addEventListener('click', () => deleteSurvey(Number(btn.dataset.id)));
   });
+}
+
+async function duplicateSurvey(id) {
+  if (!confirm('Deseja criar uma cópia desta pesquisa?')) return;
+  const btn = document.querySelector(`.btn-survey-duplicate[data-id="${id}"]`);
+  if (btn) btn.disabled = true;
+  
+  toast('Aguarde', 'Duplicando pesquisa...', 'info');
+  const { ok, data } = await api(`/api/admin/surveys/${id}/duplicate`, { method:'POST' });
+  
+  if (ok) {
+    toast('Sucesso!', 'Pesquisa duplicada com sucesso.', 'success');
+    await renderSurveys();
+  } else {
+    toast('Erro', data.error || 'Falha ao duplicar pesquisa.', 'error');
+    if (btn) btn.disabled = false;
+  }
 }
 
 function openNewSurveyModal() {

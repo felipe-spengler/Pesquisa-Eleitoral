@@ -128,6 +128,63 @@ router.delete('/surveys/:id', async (req, res) => {
   }
 });
 
+// POST /api/admin/surveys/:id/duplicate
+router.post('/surveys/:id/duplicate', async (req, res) => {
+  const client = await pool.connect();
+  try {
+    const { id } = req.params;
+    await client.query('BEGIN');
+    
+    // Fetch survey
+    const surveyRes = await client.query('SELECT * FROM surveys WHERE id = $1', [id]);
+    if (!surveyRes.rows[0]) {
+      await client.query('ROLLBACK');
+      return res.status(404).json({ error: 'Pesquisa não encontrada.' });
+    }
+    const survey = surveyRes.rows[0];
+    
+    // Create new survey
+    const newTitle = survey.title + ' (Cópia)';
+    const slug = newTitle.toLowerCase().trim().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '') + '-' + Date.now().toString().slice(-4);
+    
+    const newSurveyRes = await client.query(
+      'INSERT INTO surveys (title, slug, is_active, theme_config) VALUES ($1, $2, $3, $4) RETURNING *',
+      [newTitle, slug, false, survey.theme_config] // Start inactive
+    );
+    const newSurveyId = newSurveyRes.rows[0].id;
+
+    // Fetch questions
+    const questionsRes = await client.query('SELECT * FROM questions WHERE survey_id = $1 ORDER BY order_index ASC', [id]);
+    
+    for (const q of questionsRes.rows) {
+      const qRes = await client.query(
+        'INSERT INTO questions (survey_id, question_text, type, order_index) VALUES ($1, $2, $3, $4) RETURNING id',
+        [newSurveyId, q.question_text, q.type, q.order_index]
+      );
+      const newQId = qRes.rows[0].id;
+      
+      // Fetch options
+      const optionsRes = await client.query('SELECT * FROM options WHERE question_id = $1 ORDER BY id ASC', [q.id]);
+      
+      for (const o of optionsRes.rows) {
+        await client.query(
+          'INSERT INTO options (question_id, option_text, image_url, terminates_survey) VALUES ($1, $2, $3, $4)',
+          [newQId, o.option_text, o.image_url, o.terminates_survey]
+        );
+      }
+    }
+    
+    await client.query('COMMIT');
+    return res.status(201).json(newSurveyRes.rows[0]);
+  } catch (err) {
+    await client.query('ROLLBACK');
+    console.error('[Admin] POST surveys/:id/duplicate:', err.message);
+    return res.status(500).json({ error: 'Erro ao duplicar pesquisa.' });
+  } finally {
+    client.release();
+  }
+});
+
 // =============================================
 // QUESTIONS
 // =============================================
@@ -155,8 +212,8 @@ router.post('/surveys/:surveyId/questions', async (req, res) => {
       for (const opt of options) {
         if (opt.option_text && opt.option_text.trim()) {
           await query(
-            'INSERT INTO options (question_id, option_text, image_url) VALUES ($1, $2, $3)',
-            [question.id, opt.option_text.trim(), opt.image_url || null]
+            'INSERT INTO options (question_id, option_text, image_url, terminates_survey) VALUES ($1, $2, $3, $4)',
+            [question.id, opt.option_text.trim(), opt.image_url || null, opt.terminates_survey || false]
           );
         }
       }
@@ -211,13 +268,13 @@ router.delete('/questions/:id', async (req, res) => {
 router.post('/questions/:questionId/options', async (req, res) => {
   try {
     const { questionId } = req.params;
-    const { option_text, image_url } = req.body;
+    const { option_text, image_url, terminates_survey } = req.body;
     if (typeof option_text !== 'string' || option_text.trim() === '') {
       return res.status(400).json({ error: 'option_text é obrigatório e deve ser uma string.' });
     }
     const result = await query(
-      'INSERT INTO options (question_id, option_text, image_url) VALUES ($1, $2, $3) RETURNING *',
-      [questionId, option_text.trim(), image_url || null]
+      'INSERT INTO options (question_id, option_text, image_url, terminates_survey) VALUES ($1, $2, $3, $4) RETURNING *',
+      [questionId, option_text.trim(), image_url || null, terminates_survey || false]
     );
 
     return res.status(201).json(result.rows[0]);
@@ -231,13 +288,14 @@ router.post('/questions/:questionId/options', async (req, res) => {
 router.put('/options/:id', async (req, res) => {
   try {
     const { id } = req.params;
-    const { option_text, image_url } = req.body;
+    const { option_text, image_url, terminates_survey } = req.body;
     const result = await query(
       `UPDATE options SET 
         option_text = COALESCE($1, option_text), 
-        image_url = $2 
-       WHERE id = $3 RETURNING *`,
-      [option_text, image_url !== undefined ? image_url : null, id]
+        image_url = $2,
+        terminates_survey = COALESCE($3, terminates_survey)
+       WHERE id = $4 RETURNING *`,
+      [option_text, image_url !== undefined ? image_url : null, terminates_survey !== undefined ? terminates_survey : null, id]
     );
     if (!result.rows[0]) return res.status(404).json({ error: 'Opção não encontrada.' });
     return res.json(result.rows[0]);
