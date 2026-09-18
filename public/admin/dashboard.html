@@ -489,7 +489,10 @@ function renderSurveyEditor(survey) {
     <div class="card mb-4">
       <div class="card-header">
         <div>
-          <div class="card-title">${escapeHtml(survey.title)}</div>
+          <div class="card-title" style="display:flex; align-items:center; gap:8px;">
+            ${escapeHtml(survey.title)}
+            <button class="btn btn-secondary btn-sm" id="btn-edit-survey-title" style="padding: 2px 6px; font-size: 12px; background: var(--bg-secondary);">✏️</button>
+          </div>
           <div class="card-subtitle">Status: <span class="badge ${survey.is_active ? 'badge-success' : 'badge-gray'}">${survey.is_active ? 'Ativa' : 'Inativa'}</span></div>
         </div>
         <button class="btn btn-secondary btn-sm" id="btn-toggle-survey-status">
@@ -549,6 +552,22 @@ function renderSurveyEditor(survey) {
       if (moveUp) { reorderQuestion(Number(moveUp.dataset.qid), Number(moveUp.dataset.idx), -1); return; }
       const moveDown = e.target.closest('.btn-move-down');
       if (moveDown) { reorderQuestion(Number(moveDown.dataset.qid), Number(moveDown.dataset.idx), 1); return; }
+    });
+  }
+
+  const btnEditTitle = document.getElementById('btn-edit-survey-title');
+  if (btnEditTitle) {
+    btnEditTitle.addEventListener('click', async () => {
+      const newTitle = prompt('Digite o novo nome para a pesquisa:', survey.title);
+      if (newTitle && newTitle.trim() !== '' && newTitle !== survey.title) {
+        const { ok, data } = await api(`/api/admin/surveys/${survey.id}`, { method:'PUT', body:{ title: newTitle.trim() } });
+        if (ok) {
+          toast('Sucesso', 'Nome atualizado.', 'success');
+          editSurvey(survey.id);
+        } else {
+          toast('Erro', data.error || 'Falha ao atualizar nome.', 'error');
+        }
+      }
     });
   }
 }
