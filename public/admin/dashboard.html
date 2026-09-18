@@ -516,10 +516,12 @@ function renderSurveyEditor(survey) {
     pageContent.addEventListener('click', (e) => {
       const delQ = e.target.closest('.btn-delete-question');
       if (delQ) { deleteQuestion(Number(delQ.dataset.qid)); return; }
+      const editQ = e.target.closest('.btn-edit-question');
+      if (editQ) { editQuestionModal(Number(editQ.dataset.qid), editQ.dataset.text, editQ.dataset.type); return; }
       const delO = e.target.closest('.btn-delete-option');
       if (delO) { deleteOption(Number(delO.dataset.oid), Number(delO.dataset.qid)); return; }
       const editO = e.target.closest('.btn-edit-option');
-      if (editO) { editOptionModal(Number(editO.dataset.oid), editO.dataset.text, editO.dataset.img); return; }
+      if (editO) { editOptionModal(Number(editO.dataset.oid), editO.dataset.text, editO.dataset.img, editO.dataset.terminates === 'true'); return; }
       const addO = e.target.closest('.btn-add-option');
       if (addO) { addOption(Number(addO.dataset.qid)); return; }
       const moveUp = e.target.closest('.btn-move-up');
@@ -541,6 +543,7 @@ function renderQuestionCard(q, num) {
           <span class="text-muted text-xs" style="margin-left:8px">Pergunta ${num}</span>
         </div>
         <div>
+          <button class="btn btn-secondary btn-sm btn-edit-question" data-qid="${q.id}" data-text="${escapeHtml(q.question_text)}" data-type="${q.type}">✏️ Editar</button>
           <button class="btn btn-secondary btn-sm btn-move-up" data-qid="${q.id}" data-idx="${num-1}">⬆️</button>
           <button class="btn btn-secondary btn-sm btn-move-down" data-qid="${q.id}" data-idx="${num-1}">⬇️</button>
           <button class="btn btn-danger btn-sm btn-delete-question" data-qid="${q.id}">Remover</button>
@@ -552,8 +555,8 @@ function renderQuestionCard(q, num) {
           ${q.options.map(o => `
             <div class="option-row" id="opt-row-${o.id}">
               ${o.image_url ? `<img src="${o.image_url}" style="width:24px;height:24px;border-radius:4px;object-fit:cover;"/>` : ''}
-              <span class="badge badge-gray" style="flex:1">○ ${escapeHtml(o.option_text)}</span>
-              <button class="btn btn-secondary btn-sm btn-edit-option" data-oid="${o.id}" data-text="${escapeHtml(o.option_text)}" data-img="${o.image_url || ''}">✏️</button>
+              <span class="badge badge-gray" style="flex:1">○ ${escapeHtml(o.option_text)} ${o.terminates_survey ? '<span style="color:var(--danger);font-size:10px;margin-left:4px;font-weight:700;">[ENCERRA]</span>' : ''}</span>
+              <button class="btn btn-secondary btn-sm btn-edit-option" data-oid="${o.id}" data-text="${escapeHtml(o.option_text)}" data-img="${o.image_url || ''}" data-terminates="${o.terminates_survey ? 'true' : 'false'}">✏️</button>
               <button class="btn btn-danger btn-sm btn-delete-option" data-oid="${o.id}" data-qid="${q.id}">✕</button>
             </div>
           `).join('')}
@@ -565,6 +568,12 @@ function renderQuestionCard(q, num) {
             <div style="display:flex; gap:8px; align-items:center;">
               <input type="text" class="form-control" id="new-opt-img-${q.id}" placeholder="URL da Foto" style="flex:1; font-size:12px;">
               <input type="file" id="new-opt-file-${q.id}" accept="image/*" style="font-size:11px; max-width: 140px;">
+            </div>
+            <div style="display:flex; justify-content:space-between; align-items:center;">
+              <label style="display:flex; align-items:center; gap:6px; cursor:pointer;">
+                <input type="checkbox" id="new-opt-term-${q.id}" style="width:14px;height:14px;">
+                <span style="font-size:12px; color:var(--text-muted);">Encerra a pesquisa</span>
+              </label>
               <button class="btn btn-secondary btn-sm btn-add-option" data-qid="${q.id}">+ Adicionar</button>
             </div>
           </div>
@@ -635,6 +644,51 @@ async function deleteQuestion(id) {
   if (ok) { toast('Removido', 'Pergunta excluída.', 'success'); editSurvey(currentSurvey.id); }
 }
 
+function editQuestionModal(qId, currentText, currentType) {
+  openModal('Editar Pergunta', `
+    <form id="edit-question-form">
+      <div class="form-group">
+        <label class="form-label">Texto da Pergunta</label>
+        <textarea class="form-control" id="edit-q-text" rows="3" required>${escapeHtml(currentText)}</textarea>
+      </div>
+      <div class="form-group">
+        <label class="form-label">Tipo (Atenção: alterar o tipo pode afetar as opções existentes)</label>
+        <select class="form-control" id="edit-q-type">
+          <option value="single_choice" ${currentType === 'single_choice' ? 'selected' : ''}>Escolha Única</option>
+          <option value="multiple_choice" ${currentType === 'multiple_choice' ? 'selected' : ''}>Múltipla Escolha</option>
+          <option value="text" ${currentType === 'text' ? 'selected' : ''}>Texto Aberto</option>
+        </select>
+      </div>
+      <button type="submit" class="btn btn-primary w-full mt-4" id="btn-save-edit-q">Salvar Alterações</button>
+    </form>
+  `);
+
+  document.getElementById('edit-question-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('btn-save-edit-q');
+    btn.disabled = true;
+    btn.textContent = 'Salvando...';
+
+    const newText = document.getElementById('edit-q-text').value.trim();
+    const newType = document.getElementById('edit-q-type').value;
+
+    const { ok, data } = await api(`/api/admin/questions/${qId}`, {
+      method: 'PUT',
+      body: { question_text: newText, type: newType }
+    });
+
+    if (ok) {
+      toast('Sucesso', 'Pergunta atualizada.', 'success');
+      closeModal();
+      editSurvey(currentSurvey.id);
+    } else {
+      toast('Erro', data.error || 'Falha ao atualizar pergunta.', 'error');
+      btn.disabled = false;
+      btn.textContent = 'Salvar Alterações';
+    }
+  });
+}
+
 async function saveTheme(surveyId) {
   const bg_color = document.getElementById('theme-bg').value;
   const primary_color = document.getElementById('theme-primary').value;
@@ -682,8 +736,10 @@ async function addOption(questionId) {
   const input = document.getElementById(`new-opt-${questionId}`);
   const inputImg = document.getElementById(`new-opt-img-${questionId}`);
   const inputFile = document.getElementById(`new-opt-file-${questionId}`);
+  const inputTerm = document.getElementById(`new-opt-term-${questionId}`);
   const option_text = input.value.trim();
   if (!option_text) return;
+  const terminates_survey = inputTerm ? inputTerm.checked : false;
 
   let image_url = inputImg.value.trim() || null;
   if (inputFile.files.length > 0) {
@@ -700,7 +756,7 @@ async function addOption(questionId) {
     }
   }
 
-  const { ok, data } = await api(`/api/admin/questions/${questionId}/options`, { method:'POST', body:{ option_text, image_url } });
+  const { ok, data } = await api(`/api/admin/questions/${questionId}/options`, { method:'POST', body:{ option_text, image_url, terminates_survey } });
   if (ok) {
     input.value = '';
     inputImg.value = '';
@@ -728,6 +784,12 @@ function editOptionModal(optId, currentText, currentImg) {
           <input type="file" id="edit-opt-file" accept="image/*" style="max-width: 140px;">
         </div>
       </div>
+      <div class="form-group" style="margin-top: 10px;">
+        <label style="display:flex; align-items:center; gap:8px; cursor:pointer;">
+          <input type="checkbox" id="edit-opt-terminates" style="width:16px;height:16px;" ${currentTerminates ? 'checked' : ''}>
+          <span style="font-size:13px; color:var(--text-primary);">Se selecionada, encerrar a pesquisa imediatamente</span>
+        </label>
+      </div>
       <button type="submit" class="btn btn-primary w-full mt-4" id="btn-save-edit-opt">Salvar Alterações</button>
     </form>
   `);
@@ -740,6 +802,7 @@ function editOptionModal(optId, currentText, currentImg) {
 
     const newText = document.getElementById('edit-opt-text').value.trim();
     let newImg = document.getElementById('edit-opt-img').value.trim() || null;
+    const newTerminates = document.getElementById('edit-opt-terminates').checked;
     const fileInput = document.getElementById('edit-opt-file');
 
     if (fileInput.files.length > 0) {
@@ -755,7 +818,7 @@ function editOptionModal(optId, currentText, currentImg) {
 
     const { ok, data } = await api(`/api/admin/options/${optId}`, {
       method: 'PUT',
-      body: { option_text: newText, image_url: newImg }
+      body: { option_text: newText, image_url: newImg, terminates_survey: newTerminates }
     });
 
     if (ok) {
