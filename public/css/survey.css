@@ -282,13 +282,8 @@ body::after {
 
 .options-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: repeat(auto-fill, minmax(130px, 1fr));
   gap: 12px;
-}
-@media (max-width: 400px) {
-  .options-grid {
-    grid-template-columns: 1fr;
-  }
 }
 
 .option-label {
@@ -477,8 +472,8 @@ body::after {
 .option-content-bottom {
   display: flex;
   align-items: center;
-  gap: 12px;
-  padding: 12px 14px;
+  gap: 8px;
+  padding: 10px 10px;
   background: var(--card-alpha-hover);
 }
 
