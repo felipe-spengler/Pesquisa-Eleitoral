@@ -330,9 +330,8 @@ function renderSurvey() {
     const inputType = currentQuestion.type === 'multiple_choice' ? 'checkbox' : 'radio';
     const optionClass = currentQuestion.type === 'multiple_choice' ? 'checkbox-type' : '';
     
-    const hasImages = currentQuestion.options.some(o => o.image_url);
     const listWrapper = document.createElement('div');
-    listWrapper.className = hasImages ? 'options-grid' : 'options-list';
+    listWrapper.className = 'options-list';
     
     currentQuestion.options.forEach(o => {
       const isSelected = answers[currentQuestion.id].option_ids.includes(o.id);
@@ -360,19 +359,13 @@ function renderSurvey() {
 
       if (o.image_url) {
         label.classList.add('has-image');
-        const imgWrapper = document.createElement('div');
-        imgWrapper.className = 'option-image-wrapper';
         const img = document.createElement('img');
         img.src = o.image_url;
-        img.className = 'option-image';
-        imgWrapper.appendChild(img);
-        label.appendChild(imgWrapper);
+        img.className = 'option-icon';
         
-        const textCheckWrapper = document.createElement('div');
-        textCheckWrapper.className = 'option-content-bottom';
-        textCheckWrapper.appendChild(checkDiv);
-        textCheckWrapper.appendChild(optSpan);
-        label.appendChild(textCheckWrapper);
+        label.appendChild(checkDiv);
+        label.appendChild(img);
+        label.appendChild(optSpan);
       } else {
         label.appendChild(checkDiv);
         label.appendChild(optSpan);
@@ -416,6 +409,16 @@ function nextQuestion() {
     return;
   }
 
+  if (currentQuestion.type !== 'text') {
+    const hasTerminatingOption = currentQuestion.options.some(o => 
+      ans.option_ids.includes(o.id) && o.terminates_survey === true
+    );
+    if (hasTerminatingOption) {
+      submitSurvey();
+      return;
+    }
+  }
+
   if (currentQuestionIndex < surveyData.questions.length - 1) {
     currentQuestionIndex++;
     renderSurvey();
@@ -452,8 +455,14 @@ function handleOptionChange(questionId, optionId, type) {
 
     // Auto-avançar em escolha única para melhor UX no mobile
     setTimeout(() => {
-      if (currentQuestionIndex < surveyData.questions.length - 1) {
+      // Avoid double-submit if terminates_survey
+      const opt = currentQuestion.options.find(o => o.id === optionId);
+      if (opt && opt.terminates_survey) {
+        submitSurvey();
+      } else if (currentQuestionIndex < surveyData.questions.length - 1) {
         nextQuestion();
+      } else {
+        // If it's the last question and auto-advance, maybe submit? We let them click submit to be safe.
       }
     }, 250);
 
@@ -508,13 +517,17 @@ async function submitSurvey() {
   surveyData.questions.forEach(q => {
     const a = answers[q.id];
     if (q.type === 'text') {
-      answersPayload.push({ question_id: q.id, text_answer: a.text_answer });
+      if (a.text_answer && a.text_answer.trim() !== '') {
+        answersPayload.push({ question_id: q.id, text_answer: a.text_answer });
+      }
     } else if (q.type === 'multiple_choice') {
       a.option_ids.forEach(oid => {
         answersPayload.push({ question_id: q.id, option_id: oid });
       });
     } else {
-      answersPayload.push({ question_id: q.id, option_id: a.option_ids[0] });
+      if (a.option_ids && a.option_ids.length > 0) {
+        answersPayload.push({ question_id: q.id, option_id: a.option_ids[0] });
+      }
     }
   });
 
