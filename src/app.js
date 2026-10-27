@@ -38,8 +38,18 @@ app.use(
     },
   })
 );
+const allowedOrigins = (process.env.APP_URL || `http://localhost:${process.env.PORT || 4444}`)
+  .split(',')
+  .map(url => url.trim());
+
 app.use(cors({
-  origin: process.env.APP_URL || `http://localhost:${process.env.PORT || 4444}`,
+  origin: function (origin, callback) {
+    if (!origin || allowedOrigins.some(url => origin.startsWith(url)) || origin.startsWith('http://localhost')) {
+      callback(null, origin || true);
+    } else {
+      callback(new Error('Not allowed by CORS'));
+    }
+  },
   credentials: true,
 }));
 
@@ -55,9 +65,11 @@ app.use((req, res, next) => {
 
   // Layer 1: Origin/Referer check
   const origin = req.headers.origin || req.headers.referer;
-  const appUrl = process.env.APP_URL || `http://localhost:${process.env.PORT || 4444}`;
-  if (origin && !origin.startsWith(appUrl) && !origin.startsWith('http://localhost')) {
-    return res.status(403).json({ error: 'CSRF validation failed.' });
+  if (origin) {
+    const isAllowed = allowedOrigins.some(url => origin.startsWith(url)) || origin.startsWith('http://localhost');
+    if (!isAllowed) {
+      return res.status(403).json({ error: 'CSRF validation failed.' });
+    }
   }
 
   // Layer 2: API routes must use JSON content-type (blocks classic HTML form CSRF)
